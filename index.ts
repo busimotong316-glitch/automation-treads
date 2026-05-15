@@ -11,8 +11,11 @@ import { db, messages, closeDatabaseConnection } from "./db.js";
 import { createLogger } from "./logger.js";
 import { config } from "./config.js";
 import { sendToN8n, checkN8nHealth } from "./webhook.js";
+import express from "express";
 
 const logger = createLogger("Bot");
+const app = express();
+app.use(express.json());
 
 /**
  * Type definitions
@@ -310,6 +313,32 @@ async function startBot(): Promise<void> {
             } catch (error) {
                 logger.error("Error processing message", error);
             }
+        });
+
+        /**
+         * n8n Report Endpoint
+         * Digunakan n8n untuk lapor balik (callback)
+         */
+        app.post("/report", async (req, res) => {
+            try {
+                const { jid, message } = req.body;
+                
+                if (!jid || !message) {
+                    return res.status(400).json({ error: "Missing jid or message" });
+                }
+
+                logger.info(`📨 Sending report from n8n to ${jid}: ${message}`);
+                await sock.sendMessage(jid, { text: message });
+                
+                res.json({ success: true });
+            } catch (error: any) {
+                logger.error("Error sending n8n report", error);
+                res.status(500).json({ error: error.message });
+            }
+        });
+
+        app.listen(3000, "0.0.0.0", () => {
+            logger.info("📡 Report API listening on port 3000");
         });
     } catch (error) {
         logger.error("❌ Failed to start bot", error);

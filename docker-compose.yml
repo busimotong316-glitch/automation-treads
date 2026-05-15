@@ -57,6 +57,8 @@ services:
       BOT_RECONNECT_DELAY: 5000
       OWNER_NUMBER: "6281228264631" # NOMOR OWNER (WHITESLIST)
       LOG_LEVEL: info
+    ports:
+      - "3000:3000"
 
     # Mount auth credentials untuk persist session
     volumes:
