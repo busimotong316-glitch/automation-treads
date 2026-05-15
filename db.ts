@@ -3,7 +3,10 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { config } from "./config.js";
 import { createLogger } from "./logger.js";
+import dns from "node:dns";
 
+// Force IPv4 resolution to prevent ENETUNREACH error with Supabase in Docker
+dns.setDefaultResultOrder('ipv4first');
 const logger = createLogger("Database");
 
 /**

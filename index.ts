@@ -216,6 +216,9 @@ async function startBot(): Promise<void> {
          */
         sock.ev.on("messages.upsert", async (m: any) => {
             try {
+                // Log raw message for debugging
+                logger.info(`🔍 RAW MESSAGE RECEIVED: ${JSON.stringify(m).substring(0, 500)}`);
+
                 // Validate message structure
                 if (!m?.messages || !Array.isArray(m.messages)) {
                     logger.debug("Invalid message structure");
@@ -231,14 +234,18 @@ async function startBot(): Promise<void> {
 
                 // Whitelist check
                 const senderJid = msg.key?.remoteJid || "";
+                const senderJidAlt = msg.key?.remoteJidAlt || "";
                 const ownerJid = config.bot.ownerNumber.includes("@s.whatsapp.net") 
                     ? config.bot.ownerNumber 
                     : `${config.bot.ownerNumber}@s.whatsapp.net`;
                 
-                if (senderJid !== ownerJid) {
-                    logger.warn(`⚠️ Ignored message from non-owner: ${senderJid}`);
+                if (senderJid !== ownerJid && senderJidAlt !== ownerJid) {
+                    logger.warn(`⚠️ Ignored message from non-owner: ${senderJid} (Alt: ${senderJidAlt})`);
                     return;
                 }
+
+                // Gunakan JID asli (bukan LID) untuk reply
+                const targetJid = senderJidAlt || senderJid;
 
                 // Extract message content
                 const content =
@@ -283,13 +290,13 @@ async function startBot(): Promise<void> {
                 );
 
                 // Humanize: Send Typing presence
-                await sock.sendPresenceUpdate('composing', senderJid);
+                await sock.sendPresenceUpdate('composing', targetJid);
                 await delay(1500); // Wait 1.5 seconds to look natural
-                await sock.sendPresenceUpdate('paused', senderJid);
+                await sock.sendPresenceUpdate('paused', targetJid);
 
                 // Process message asynchronously tanpa blocking
                 await processMessage({
-                    remoteJid: senderJid,
+                    remoteJid: targetJid,
                     pushName: msg.pushName,
                     content: content,
                     hasImage,
@@ -301,7 +308,7 @@ async function startBot(): Promise<void> {
                 const replyText = hasImage 
                     ? "✅ Siap bro, gambar dan konten lagi diproses ke n8n!" 
                     : "✅ Siap bro, pesan lagi diproses ke n8n!";
-                await sock.sendMessage(senderJid, { text: replyText }, { quoted: msg });
+                await sock.sendMessage(targetJid, { text: replyText }, { quoted: msg });
 
             } catch (error) {
                 logger.error("Error processing message", error);

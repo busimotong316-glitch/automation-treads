@@ -41,15 +41,15 @@ COPY --from=builder /app/dist ./dist
 # Create volume untuk auth credentials (persistent)
 RUN mkdir -p auth_info_baileys && chown -R nodejs:nodejs auth_info_baileys
 
-# Change to nodejs user
-USER nodejs
+# Change to nodejs user (Disabled sementara karena masalah permission di Windows volume)
+# USER nodejs
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD node -e "process.exit(0)" || exit 1
 
 # Use dumb-init untuk proper signal handling
-ENTRYPOINT ["/usr/sbin/dumb-init", "--"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 # Start application
 CMD ["node", "dist/index.js"]
