@@ -6,12 +6,13 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     environment:
-      - N8N_BASIC_AUTH_ACTIVE=true
-      - N8N_BASIC_AUTH_USER=admin
-      - N8N_BASIC_AUTH_PASSWORD=password
-      - N8N_HOST=n8n
-      - N8N_PROTOCOL=http
-      - N8N_PORT=5678
+       - N8N_BASIC_AUTH_ACTIVE=true
+       - N8N_BASIC_AUTH_USER=admin
+       - N8N_BASIC_AUTH_PASSWORD=password
+       - N8N_HOST=0.0.0.0
+       - WEBHOOK_URL=http://localhost:5678/
+       - N8N_PROTOCOL=http
+       - N8N_PORT=5678
     ports:
       - "5678:5678"
     volumes:
@@ -48,7 +49,7 @@ services:
       DATABASE_URL: postgresql://postgres.rpmsvgdtlyqpseghriug:Shinkoaudio_16@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
 
       # n8n Webhook Configuration (point ke n8n service)
-      N8N_WEBHOOK_URL: http://n8n:5678/webhook/messages
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook-test/messages
       N8N_WEBHOOK_TIMEOUT: 10000
       N8N_WEBHOOK_RETRIES: 3
 

@@ -321,14 +321,15 @@ async function startBot(): Promise<void> {
          */
         app.post("/report", async (req, res) => {
             try {
-                const { jid, message } = req.body;
+                const { jid, remoteJid, message } = req.body;
+                const targetJid = jid || remoteJid;
                 
-                if (!jid || !message) {
+                if (!targetJid || !message) {
                     return res.status(400).json({ error: "Missing jid or message" });
                 }
 
-                logger.info(`📨 Sending report from n8n to ${jid}: ${message}`);
-                await sock.sendMessage(jid, { text: message });
+                logger.info(`📨 Sending report from n8n to ${targetJid}: ${message}`);
+                await sock.sendMessage(targetJid, { text: message });
                 
                 res.json({ success: true });
             } catch (error: any) {
