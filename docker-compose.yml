@@ -1,0 +1,90 @@
+version: "3.9"
+
+services:
+  # n8n Service
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=password
+      - N8N_HOST=n8n
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - iman_network
+    restart: unless-stopped
+
+  # PostgreSQL Database (Supabase alternative untuk development)
+  # Uncomment jika mau development database lokal
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: iman_db
+  #   environment:
+  #     - POSTGRES_USER=admin
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=iman_bot
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - iman_network
+  #   restart: unless-stopped
+
+  # Iman WhatsApp Bot
+  iman_bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: iman_wa_bot
+    environment:
+      # Database Configuration
+      DATABASE_URL: postgresql://postgres.rpmsvgdtlyqpseghriug:Shinkoaudio_16@db.rpmsvgdtlyqpseghriug.supabase.co:5432/postgres
+
+      # n8n Webhook Configuration (point ke n8n service)
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/messages
+      N8N_WEBHOOK_TIMEOUT: 10000
+      N8N_WEBHOOK_RETRIES: 3
+
+      # Bot Configuration
+      BOT_NAME: "Iman Bot Docker"
+      BOT_RECONNECT_DELAY: 5000
+      OWNER_NUMBER: "6281228264631" # NOMOR OWNER (WHITESLIST)
+      LOG_LEVEL: info
+
+    # Mount auth credentials untuk persist session
+    volumes:
+      - ./auth_info_baileys:/app/auth_info_baileys
+
+    # Depends on n8n
+    depends_on:
+      - n8n
+
+    networks:
+      - iman_network
+
+    restart: unless-stopped
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+        reservations:
+          cpus: "0.5"
+          memory: 256M
+
+volumes:
+  n8n_data:
+  # postgres_data:
+
+networks:
+  iman_network:
+    driver: bridge

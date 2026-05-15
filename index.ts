@@ -1,0 +1,382 @@
+import makeWASocket, {
+    DisconnectReason,
+    useMultiFileAuthState,
+    fetchLatestBaileysVersion,
+    downloadMediaMessage,
+    delay,
+} from "@whiskeysockets/baileys";
+import { Boom } from "@hapi/boom";
+import qrcode from "qrcode-terminal";
+import { db, messages, closeDatabaseConnection } from "./db.js";
+import { createLogger } from "./logger.js";
+import { config } from "./config.js";
+import { sendToN8n, checkN8nHealth } from "./webhook.js";
+
+const logger = createLogger("Bot");
+
+/**
+ * Type definitions
+ */
+interface MessageEvent {
+    remoteJid: string;
+    pushName?: string;
+    content: string;
+    hasImage?: boolean;
+    base64Image?: string;
+    mimeType?: string;
+}
+
+/**
+ * Global state untuk prevent memory leak dan race conditions
+ */
+const botState = {
+    isConnecting: false,
+    isRunning: false,
+    sock: null as any,
+    reconnectTimeout: null as NodeJS.Timeout | null,
+};
+
+/**
+ * Send message to database dan n8n webhook
+ */
+async function processMessage(msg: MessageEvent): Promise<void> {
+    try {
+        const timestamp = new Date().toISOString();
+
+        // Parallel processing: DB insert + Webhook send
+        // Gunakan Promise.allSettled agar kalau salah satu gagal, tetap lanjut
+        const [dbResult, webhookResult] = await Promise.allSettled([
+            // Insert ke database
+            (async () => {
+                const result = await db
+                    .instance()
+                    .insert(messages)
+                    .values({
+                        remoteJid: msg.remoteJid,
+                        pushName: msg.pushName || "Anonim",
+                        content: msg.content,
+                    });
+                logger.info("✅ Message saved to database", {
+                    jid: msg.remoteJid,
+                });
+                return result;
+            })(),
+
+            // Send ke n8n webhook
+            (async () => {
+                const webhookPayload = {
+                    remoteJid: msg.remoteJid,
+                    pushName: msg.pushName || "Anonim",
+                    content: msg.content,
+                    timestamp,
+                    hasImage: msg.hasImage,
+                    base64Image: msg.base64Image,
+                    mimeType: msg.mimeType,
+                };
+                const success = await sendToN8n(webhookPayload);
+                return success;
+            })(),
+        ]);
+
+        // Log results
+        if (dbResult.status === "rejected") {
+            logger.error(
+                "❌ Failed to save message to database",
+                dbResult.reason,
+            );
+        }
+
+        if (webhookResult.status === "rejected") {
+            logger.error("❌ Failed to send webhook", webhookResult.reason);
+        }
+    } catch (error) {
+        logger.error("❌ Unexpected error in processMessage", error);
+    }
+}
+
+/**
+ * Cleanup event listeners untuk prevent memory leak
+ */
+function removeAllListeners(sock: any): void {
+    try {
+        sock.ev.removeAllListeners("creds.update");
+        sock.ev.removeAllListeners("connection.update");
+        sock.ev.removeAllListeners("messages.upsert");
+        logger.debug("Event listeners removed");
+    } catch (error) {
+        logger.warn("Error removing listeners", error);
+    }
+}
+
+/**
+ * Main bot function dengan proper lifecycle management
+ */
+async function startBot(): Promise<void> {
+    // Prevent multiple simultaneous connection attempts
+    if (botState.isConnecting) {
+        logger.warn("⚠️  Bot already connecting, skipping...");
+        return;
+    }
+
+    botState.isConnecting = true;
+
+    try {
+        const { state, saveCreds } =
+            await useMultiFileAuthState("auth_info_baileys");
+        const { version } = await fetchLatestBaileysVersion();
+
+        const sock = makeWASocket({
+            version,
+            auth: state,
+            printQRInTerminal: false,
+            browser: [config.bot.name, "Chrome", "1.0.0"],
+        });
+
+        botState.sock = sock;
+
+        /**
+         * Handle credentials update
+         */
+        sock.ev.on("creds.update", saveCreds);
+
+        /**
+         * Handle connection updates
+         */
+        sock.ev.on("connection.update", (update) => {
+            const { connection, lastDisconnect, qr } = update;
+
+            if (qr) {
+                logger.info("🔐 SCAN QR BELOW / SCAN QR DI BAWAH");
+                qrcode.generate(qr, { small: true });
+            }
+
+            if (connection === "close") {
+                const errorCode = (lastDisconnect?.error as Boom)?.output
+                    ?.statusCode;
+                logger.error(`Connection closed. Error code: ${errorCode}`);
+
+                // Handle specific error codes
+                if (errorCode === 440) {
+                    logger.error(
+                        "❌ ERROR 440: Session already logged in elsewhere!",
+                    );
+                    logger.info(
+                        "Delete 'auth_info_baileys' folder and try again",
+                    );
+                    botState.isConnecting = false;
+                    return;
+                }
+
+                if (errorCode === 401) {
+                    logger.error("❌ ERROR 401: Device removed from WhatsApp");
+                    logger.info("Logout and login again");
+                    botState.isConnecting = false;
+                    return;
+                }
+
+                const shouldReconnect =
+                    errorCode !== DisconnectReason.loggedOut;
+                if (shouldReconnect) {
+                    logger.info(
+                        `🔄 Reconnecting dalam ${config.bot.reconnectDelay}ms...`,
+                    );
+
+                    // Clear previous timeout
+                    if (botState.reconnectTimeout) {
+                        clearTimeout(botState.reconnectTimeout);
+                    }
+
+                    botState.isConnecting = false;
+                    botState.reconnectTimeout = setTimeout(() => {
+                        startBot().catch((error) =>
+                            logger.error("Reconnect failed", error),
+                        );
+                    }, config.bot.reconnectDelay);
+                } else {
+                    logger.warn(
+                        "🚪 Bot logged out. Please run again to scan QR.",
+                    );
+                    botState.isConnecting = false;
+                }
+            } else if (connection === "open") {
+                botState.isRunning = true;
+                botState.isConnecting = false;
+                logger.info("✅ WhatsApp bot successfully connected!");
+                checkN8nHealth().catch(() =>
+                    logger.warn("Could not verify n8n health"),
+                );
+            } else if (connection === "connecting") {
+                logger.debug("[...] Connecting to WhatsApp...");
+            }
+        });
+
+        /**
+         * Handle incoming messages
+         * Optimized dengan proper type checking dan error handling
+         */
+        sock.ev.on("messages.upsert", async (m: any) => {
+            try {
+                // Validate message structure
+                if (!m?.messages || !Array.isArray(m.messages)) {
+                    logger.debug("Invalid message structure");
+                    return;
+                }
+
+                const msg = m.messages[0];
+
+                // Check message validity
+                if (!msg || msg.key?.fromMe || m.type !== "notify") {
+                    return; // Skip own messages dan non-notify events
+                }
+
+                // Whitelist check
+                const senderJid = msg.key?.remoteJid || "";
+                const ownerJid = config.bot.ownerNumber.includes("@s.whatsapp.net") 
+                    ? config.bot.ownerNumber 
+                    : `${config.bot.ownerNumber}@s.whatsapp.net`;
+                
+                if (senderJid !== ownerJid) {
+                    logger.warn(`⚠️ Ignored message from non-owner: ${senderJid}`);
+                    return;
+                }
+
+                // Extract message content
+                const content =
+                    msg.message?.conversation ||
+                    msg.message?.extendedTextMessage?.text ||
+                    msg.message?.imageMessage?.caption ||
+                    "";
+
+                // Image handling
+                let hasImage = false;
+                let base64Image = undefined;
+                let mimeType = undefined;
+
+                if (msg.message?.imageMessage) {
+                    hasImage = true;
+                    mimeType = msg.message.imageMessage.mimetype;
+                    logger.info("🖼️ Downloading image from message...");
+                    try {
+                        const buffer = await downloadMediaMessage(
+                            msg,
+                            'buffer',
+                            {},
+                            { 
+                                logger: logger as any,
+                                reuploadRequest: sock.updateMediaMessage 
+                            }
+                        ) as Buffer;
+                        base64Image = buffer.toString('base64');
+                        logger.info("✅ Image downloaded and encoded");
+                    } catch (err) {
+                        logger.error("❌ Failed to download image", err);
+                    }
+                }
+
+                // Skip empty messages unless there's an image
+                if (!content && !hasImage) {
+                    return;
+                }
+
+                logger.info(
+                    `📨 Message received: "${content.substring(0, 50)}..."`,
+                );
+
+                // Humanize: Send Typing presence
+                await sock.sendPresenceUpdate('composing', senderJid);
+                await delay(1500); // Wait 1.5 seconds to look natural
+                await sock.sendPresenceUpdate('paused', senderJid);
+
+                // Process message asynchronously tanpa blocking
+                await processMessage({
+                    remoteJid: senderJid,
+                    pushName: msg.pushName,
+                    content: content,
+                    hasImage,
+                    base64Image,
+                    mimeType
+                });
+
+                // Send confirmation reply
+                const replyText = hasImage 
+                    ? "✅ Siap bro, gambar dan konten lagi diproses ke n8n!" 
+                    : "✅ Siap bro, pesan lagi diproses ke n8n!";
+                await sock.sendMessage(senderJid, { text: replyText }, { quoted: msg });
+
+            } catch (error) {
+                logger.error("Error processing message", error);
+            }
+        });
+    } catch (error) {
+        logger.error("❌ Failed to start bot", error);
+        botState.isConnecting = false;
+        throw error;
+    }
+}
+
+/**
+ * Graceful shutdown handler
+ */
+async function shutdown(signal: string): Promise<void> {
+    logger.info(`\n📛 Shutdown signal received: ${signal}`);
+
+    // Clear any pending reconnect
+    if (botState.reconnectTimeout) {
+        clearTimeout(botState.reconnectTimeout);
+    }
+
+    // Cleanup socket
+    if (botState.sock) {
+        try {
+            removeAllListeners(botState.sock);
+            await botState.sock.end();
+            logger.info("✅ Socket closed");
+        } catch (error) {
+            logger.warn("Error closing socket", error);
+        }
+    }
+
+    // Close database connection
+    await closeDatabaseConnection();
+
+    botState.isRunning = false;
+    logger.info("✅ Shutdown complete");
+    process.exit(0);
+}
+
+/**
+ * Main execution
+ */
+async function main(): Promise<void> {
+    try {
+        logger.info("🚀 Starting Iman WhatsApp Bot...");
+        logger.info(`📋 Config: ${JSON.stringify(config, null, 2)}`);
+
+        await startBot();
+
+        // Setup graceful shutdown handlers
+        process.on("SIGINT", () => shutdown("SIGINT"));
+        process.on("SIGTERM", () => shutdown("SIGTERM"));
+        process.on("SIGHUP", () => shutdown("SIGHUP"));
+
+        // Handle uncaught exceptions
+        process.on("uncaughtException", (error) => {
+            logger.error("❌ Uncaught exception", error);
+            shutdown("uncaughtException");
+        });
+
+        process.on("unhandledRejection", (reason) => {
+            logger.error("❌ Unhandled rejection", reason);
+            shutdown("unhandledRejection");
+        });
+    } catch (error) {
+        logger.error("Fatal error during startup", error);
+        process.exit(1);
+    }
+}
+
+// Run main
+main().catch((error) => {
+    logger.error("Main function error", error);
+    process.exit(1);
+});
