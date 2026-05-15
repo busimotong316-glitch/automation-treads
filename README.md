@@ -1,4 +1,4 @@
-# Iman WhatsApp Bot - n8n Bridge
+# WhatsApp Bot - n8n Bridge
 
 A robust WhatsApp bot that serves as a bridge to n8n webhooks, built with Baileys and Drizzle ORM for PostgreSQL/Supabase persistence.
 
