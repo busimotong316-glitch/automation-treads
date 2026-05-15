@@ -216,9 +216,6 @@ async function startBot(): Promise<void> {
          */
         sock.ev.on("messages.upsert", async (m: any) => {
             try {
-                // Log raw message for debugging
-                logger.info(`🔍 RAW MESSAGE RECEIVED: ${JSON.stringify(m).substring(0, 500)}`);
-
                 // Validate message structure
                 if (!m?.messages || !Array.isArray(m.messages)) {
                     logger.debug("Invalid message structure");
