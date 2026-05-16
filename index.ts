@@ -182,7 +182,7 @@ async function startBot(): Promise<void> {
                 } catch (err) {
                     logger.error("❌ Gagal request pairing code", err);
                 }
-            }, 3000);
+            }, 10000);
         }
 
         /**
