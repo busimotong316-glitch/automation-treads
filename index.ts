@@ -150,9 +150,18 @@ async function startBot(): Promise<void> {
 
     botState.isConnecting = true;
 
-    try {
         const { state, saveCreds } =
             await useMultiFileAuthState("auth_info_baileys");
+
+        // HACK: Force registered to true if we have a session identity
+        // Ini buat nembus masalah 'registered: false' pas pindahan ke Railway
+        if (state.creds && (state.creds as any).me?.id && !state.creds.registered) {
+            logger.info("🛠️  Session found but unregistered. Forcing 'registered' to true...");
+            state.creds.registered = true;
+            // Save immediately so it sticks
+            await saveCreds();
+        }
+
         const { version } = await fetchLatestBaileysVersion();
 
         const sock = makeWASocket({
