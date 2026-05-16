@@ -42,14 +42,24 @@ const botState = {
 
 /**
  * Hapus semua file session WA biar bisa login fresh
+ * Hapus file satu-satu (bukan rmdir) biar nggak EBUSY
  */
 function clearAuthFolder(): void {
     const authDir = "auth_info_baileys";
     try {
-        if (fs.existsSync(authDir)) {
-            fs.rmSync(authDir, { recursive: true, force: true });
-            logger.info("🗑️ Auth folder cleared. Restarting for fresh login...");
+        if (!fs.existsSync(authDir)) return;
+        // Hapus isi folder file per file, skip kalau locked
+        const files = fs.readdirSync(authDir);
+        let cleared = 0;
+        for (const file of files) {
+            try {
+                fs.unlinkSync(`${authDir}/${file}`);
+                cleared++;
+            } catch (_) {
+                // skip file yang masih locked
+            }
         }
+        logger.info(`🗑️ Cleared ${cleared}/${files.length} auth files. Bot akan restart...`);
     } catch (err) {
         logger.error("❌ Failed to clear auth folder", err);
     }
