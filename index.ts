@@ -12,6 +12,7 @@ import { createLogger } from "./logger.js";
 import { config } from "./config.js";
 import { sendToN8n, checkN8nHealth } from "./webhook.js";
 import express from "express";
+import fs from "node:fs";
 
 const logger = createLogger("Bot");
 const app = express();
@@ -38,6 +39,21 @@ const botState = {
     sock: null as any,
     reconnectTimeout: null as NodeJS.Timeout | null,
 };
+
+/**
+ * Hapus semua file session WA biar bisa login fresh
+ */
+function clearAuthFolder(): void {
+    const authDir = "auth_info_baileys";
+    try {
+        if (fs.existsSync(authDir)) {
+            fs.rmSync(authDir, { recursive: true, force: true });
+            logger.info("🗑️ Auth folder cleared. Restarting for fresh login...");
+        }
+    } catch (err) {
+        logger.error("❌ Failed to clear auth folder", err);
+    }
+}
 
 /**
  * Send message to database dan n8n webhook
@@ -192,9 +208,13 @@ async function startBot(): Promise<void> {
                 }
 
                 if (errorCode === 401) {
-                    logger.error("❌ ERROR 401: Device removed from WhatsApp");
-                    logger.info("Logout and login again");
+                    logger.error("❌ ERROR 401: Session lama invalid/removed. Auto-clearing auth...");
+                    clearAuthFolder();
                     botState.isConnecting = false;
+                    // Restart setelah 3 detik buat minta pairing code baru
+                    setTimeout(() => {
+                        startBot().catch((err) => logger.error("Restart after 401 failed", err));
+                    }, 3000);
                     return;
                 }
 
