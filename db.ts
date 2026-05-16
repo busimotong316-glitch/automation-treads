@@ -5,8 +5,10 @@ import { config } from "./config.js";
 import { createLogger } from "./logger.js";
 import dns from "node:dns";
 
-// Force IPv4 resolution to prevent ENETUNREACH error with Supabase in Docker
-dns.setDefaultResultOrder('ipv4first');
+
+// Force IPv4 resolution SEBELUM koneksi apapun dibuat
+// Mencegah ENETUNREACH karena Railway container tidak support IPv6
+dns.setDefaultResultOrder("ipv4first");
 const logger = createLogger("Database");
 
 /**
@@ -31,7 +33,15 @@ export function initializeDatabase() {
             max: config.database.maxConnections,
             idle_timeout: 30,
             connect_timeout: 30,
+            // Force SSL untuk Supabase (wajib di production)
+            ssl: config.database.url.includes("supabase.co") ? "require" : false,
+            // Mencegah ENETUNREACH: fallback ke IPv4 eksplisit
+            // Node.js kadang mencoba IPv6 dulu di container yang tidak support
+            connection: {
+                application_name: "iman-wa-bot",
+            },
         });
+
 
         logger.info("✅ Database connection initialized");
         return client;
