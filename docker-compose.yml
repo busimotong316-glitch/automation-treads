@@ -6,11 +6,11 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     environment:
-       - N8N_BASIC_AUTH_ACTIVE=true
-       - N8N_BASIC_AUTH_USER=admin
-       - N8N_BASIC_AUTH_PASSWORD=password
+       - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-password}
        - N8N_HOST=0.0.0.0
-       - WEBHOOK_URL=http://localhost:5678/
+       - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
        - N8N_PROTOCOL=http
        - N8N_PORT=5678
     ports:
@@ -44,37 +44,18 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: iman_wa_bot
-    environment:
-      # Database Configuration
-      DATABASE_URL: postgresql://postgres.rpmsvgdtlyqpseghriug:[password]@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
-
-      # n8n Webhook Configuration (point ke n8n service)
-      N8N_WEBHOOK_URL: http://n8n:5678/webhook/messages
-      N8N_WEBHOOK_TIMEOUT: 10000
-      N8N_WEBHOOK_RETRIES: 3
-
-      # Bot Configuration
-      BOT_NAME: "Iman Bot Docker"
-      BOT_RECONNECT_DELAY: 5000
-      OWNER_NUMBER: "6281228264631" # NOMOR OWNER (WHITESLIST)
-      LOG_LEVEL: info
+    # Load semua env dari file .env (jangan hardcode credentials di sini!)
+    env_file:
+      - .env
     ports:
       - "3000:3000"
-
-    # Mount auth credentials untuk persist session
     volumes:
       - ./auth_info_baileys:/app/auth_info_baileys
-
-    # Depends on n8n
     depends_on:
       - n8n
-
     networks:
       - iman_network
-
     restart: unless-stopped
-
-    # Resource limits
     deploy:
       resources:
         limits:
