@@ -3,13 +3,9 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { config } from "./config.js";
 import { createLogger } from "./logger.js";
-import dns from "node:dns";
 
-
-// Force IPv4 resolution SEBELUM koneksi apapun dibuat
-// Mencegah ENETUNREACH karena Railway container tidak support IPv6
-dns.setDefaultResultOrder("ipv4first");
 const logger = createLogger("Database");
+
 
 /**
  * Define Messages Table

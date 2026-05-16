@@ -1,3 +1,8 @@
+// ⚠️ MUST BE FIRST LINE — Force IPv4 DNS resolution before any network import
+// Prevents ENETUNREACH when Railway container does not support IPv6
+import dns from "node:dns";
+dns.setDefaultResultOrder("ipv4first");
+
 import makeWASocket, {
     DisconnectReason,
     useMultiFileAuthState,
