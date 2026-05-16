@@ -229,13 +229,9 @@ async function startBot(): Promise<void> {
                 }
 
                 if (errorCode === 401) {
-                    logger.error("❌ ERROR 401: Session lama invalid/removed. Auto-clearing auth...");
-                    clearAuthFolder();
+                    logger.error("❌ ERROR 401: Session invalid/removed.");
+                    logger.info("Please clear auth_info_baileys and try again.");
                     botState.isConnecting = false;
-                    // Restart setelah 3 detik buat minta pairing code baru
-                    setTimeout(() => {
-                        startBot().catch((err) => logger.error("Restart after 401 failed", err));
-                    }, 3000);
                     return;
                 }
 
