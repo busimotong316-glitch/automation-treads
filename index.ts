@@ -150,6 +150,7 @@ async function startBot(): Promise<void> {
 
     botState.isConnecting = true;
 
+    try {
         const { state, saveCreds } =
             await useMultiFileAuthState("auth_info_baileys");
 
