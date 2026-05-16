@@ -4,6 +4,7 @@ import makeWASocket, {
     fetchLatestBaileysVersion,
     downloadMediaMessage,
     delay,
+    Browsers,
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
@@ -158,7 +159,7 @@ async function startBot(): Promise<void> {
             version,
             auth: state,
             printQRInTerminal: !config.bot.botPhoneNumber,
-            browser: [config.bot.name, "Chrome", "1.0.0"],
+            browser: Browsers.ubuntu("Chrome"),
         });
 
         botState.sock = sock;
