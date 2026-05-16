@@ -184,29 +184,32 @@ async function startBot(): Promise<void> {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr && !pairingCodeRequested) {
-                if (config.bot.botPhoneNumber) {
+                // Skip pairing request if we already have a valid auth folder and session is registered
+                if (fs.existsSync('auth_info_baileys') && state.creds && state.creds.registered) {
+                    logger.debug('Auth folder exists with registered session; skipping pairing code request.');
+                } else if (config.bot.botPhoneNumber) {
                     pairingCodeRequested = true;
                     // Jika ada nomor bot, kita request Pairing Code (bukan QR)
-                    logger.info("🔐 REQUESTING PAIRING CODE...");
+                    logger.info('🔐 REQUESTING PAIRING CODE...');
                     setTimeout(async () => {
                         try {
                             const code = await sock.requestPairingCode(config.bot.botPhoneNumber);
-                            logger.info(`======================================================`);
+                            logger.info('======================================================');
                             logger.info(`🔑 KODE PAIRING WA LU: ${code}`);
-                            logger.info(`Langkah-langkah:`);
-                            logger.info(`1. Buka WA di HP lu yang mau dijadiin bot.`);
-                            logger.info(`2. Pilih Perangkat Tertaut > Tautkan Perangkat.`);
-                            logger.info(`3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).`);
-                            logger.info(`4. Masukkan kode 8 digit di atas.`);
-                            logger.info(`======================================================`);
+                            logger.info('Langkah-langkah:');
+                            logger.info('1. Buka WA di HP lu yang mau dijadiin bot.');
+                            logger.info('2. Pilih Perangkat Tertaut > Tautkan Perangkat.');
+                            logger.info("3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).");
+                            logger.info('4. Masukkan kode 8 digit di atas.');
+                            logger.info('======================================================');
                         } catch (err) {
-                            logger.error("❌ Gagal request pairing code", err);
+                            logger.error('❌ Gagal request pairing code', err);
                             pairingCodeRequested = false;
                         }
                     }, 5000);
                 } else {
                     // Jika nggak ada nomor, baru nampilin QR
-                    logger.info("🔐 SCAN QR BELOW / SCAN QR DI BAWAH");
+                    logger.info('🔐 SCAN QR BELOW / SCAN QR DI BAWAH');
                     qrcode.generate(qr, { small: true });
                 }
             }
