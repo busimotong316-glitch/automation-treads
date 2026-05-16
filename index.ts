@@ -165,27 +165,6 @@ async function startBot(): Promise<void> {
         botState.sock = sock;
 
         /**
-         * Handle Pairing Code
-         */
-        if (!sock.authState.creds.registered && config.bot.botPhoneNumber) {
-            setTimeout(async () => {
-                try {
-                    const code = await sock.requestPairingCode(config.bot.botPhoneNumber);
-                    logger.info(`======================================================`);
-                    logger.info(`🔑 KODE PAIRING WA LU: ${code}`);
-                    logger.info(`Langkah-langkah:`);
-                    logger.info(`1. Buka WA di HP lu yang mau dijadiin bot.`);
-                    logger.info(`2. Pilih Perangkat Tertaut > Tautkan Perangkat.`);
-                    logger.info(`3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).`);
-                    logger.info(`4. Masukkan kode 8 digit di atas.`);
-                    logger.info(`======================================================`);
-                } catch (err) {
-                    logger.error("❌ Gagal request pairing code", err);
-                }
-            }, 10000);
-        }
-
-        /**
          * Handle credentials update
          */
         sock.ev.on("creds.update", saveCreds);
@@ -197,8 +176,29 @@ async function startBot(): Promise<void> {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                logger.info("🔐 SCAN QR BELOW / SCAN QR DI BAWAH");
-                qrcode.generate(qr, { small: true });
+                if (config.bot.botPhoneNumber) {
+                    // Jika ada nomor bot, kita request Pairing Code (bukan QR)
+                    logger.info("🔐 REQUESTING PAIRING CODE...");
+                    setTimeout(async () => {
+                        try {
+                            const code = await sock.requestPairingCode(config.bot.botPhoneNumber);
+                            logger.info(`======================================================`);
+                            logger.info(`🔑 KODE PAIRING WA LU: ${code}`);
+                            logger.info(`Langkah-langkah:`);
+                            logger.info(`1. Buka WA di HP lu yang mau dijadiin bot.`);
+                            logger.info(`2. Pilih Perangkat Tertaut > Tautkan Perangkat.`);
+                            logger.info(`3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).`);
+                            logger.info(`4. Masukkan kode 8 digit di atas.`);
+                            logger.info(`======================================================`);
+                        } catch (err) {
+                            logger.error("❌ Gagal request pairing code", err);
+                        }
+                    }, 5000);
+                } else {
+                    // Jika nggak ada nomor, baru nampilin QR
+                    logger.info("🔐 SCAN QR BELOW / SCAN QR DI BAWAH");
+                    qrcode.generate(qr, { small: true });
+                }
             }
 
             if (connection === "close") {
