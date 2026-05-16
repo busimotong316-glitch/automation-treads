@@ -49,7 +49,7 @@ services:
       DATABASE_URL: postgresql://postgres.rpmsvgdtlyqpseghriug:Shinkoaudio_16@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres
 
       # n8n Webhook Configuration (point ke n8n service)
-      N8N_WEBHOOK_URL: http://n8n:5678/webhook-test/messages
+      N8N_WEBHOOK_URL: http://n8n:5678/webhook/messages
       N8N_WEBHOOK_TIMEOUT: 10000
       N8N_WEBHOOK_RETRIES: 3
 

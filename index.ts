@@ -217,6 +217,8 @@ async function startBot(): Promise<void> {
          * Handle incoming messages
          * Optimized dengan proper type checking dan error handling
          */
+        const processedMessages = new Set<string>();
+
         sock.ev.on("messages.upsert", async (m: any) => {
             try {
                 // Validate message structure
@@ -230,6 +232,19 @@ async function startBot(): Promise<void> {
                 // Check message validity
                 if (!msg || msg.key?.fromMe || m.type !== "notify") {
                     return; // Skip own messages dan non-notify events
+                }
+
+                // Cegah pesan diproses berkali-kali (Duplicate Filter)
+                const msgId = msg.key?.id;
+                if (msgId) {
+                    if (processedMessages.has(msgId)) return; // Skip kalau udah pernah diproses
+                    processedMessages.add(msgId);
+                    
+                    // Jaga biar memori nggak penuh (maksimal simpan 1000 ID pesan terakhir)
+                    if (processedMessages.size > 1000) {
+                        const firstItem = processedMessages.values().next().value;
+                        if (firstItem) processedMessages.delete(firstItem);
+                    }
                 }
 
                 // Whitelist check
