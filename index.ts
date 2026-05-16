@@ -331,10 +331,10 @@ async function startBot(): Promise<void> {
                 logger.info(`📨 Sending report from n8n to ${targetJid}: ${message}`);
                 await sock.sendMessage(targetJid, { text: message });
                 
-                res.json({ success: true });
+                return res.json({ success: true });
             } catch (error: any) {
                 logger.error("Error sending n8n report", error);
-                res.status(500).json({ error: error.message });
+                return res.status(500).json({ error: error.message });
             }
         });
 
