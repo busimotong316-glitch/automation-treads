@@ -17,6 +17,7 @@ interface Config {
         name: string;
         reconnectDelay: number;
         ownerNumber: string;
+        botPhoneNumber: string;
     };
     log: {
         level: "info" | "debug" | "error" | "warn";
@@ -51,6 +52,7 @@ export const config: Config = {
         name: process.env.BOT_NAME || "Iman Bot",
         reconnectDelay: parseInt(process.env.BOT_RECONNECT_DELAY || "5000"),
         ownerNumber: validateEnv("OWNER_NUMBER", "628000000000@s.whatsapp.net"), // Pastikan di .env diset (tanpa @s.whatsapp.net, atau sekalian tambah @s.whatsapp.net di validasi)
+        botPhoneNumber: process.env.BOT_PHONE_NUMBER || "",
     },
     log: {
         level: (process.env.LOG_LEVEL || "info") as

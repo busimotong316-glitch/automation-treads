@@ -131,11 +131,32 @@ async function startBot(): Promise<void> {
         const sock = makeWASocket({
             version,
             auth: state,
-            printQRInTerminal: false,
+            printQRInTerminal: !config.bot.botPhoneNumber,
             browser: [config.bot.name, "Chrome", "1.0.0"],
         });
 
         botState.sock = sock;
+
+        /**
+         * Handle Pairing Code
+         */
+        if (!sock.authState.creds.registered && config.bot.botPhoneNumber) {
+            setTimeout(async () => {
+                try {
+                    const code = await sock.requestPairingCode(config.bot.botPhoneNumber);
+                    logger.info(`======================================================`);
+                    logger.info(`🔑 KODE PAIRING WA LU: ${code}`);
+                    logger.info(`Langkah-langkah:`);
+                    logger.info(`1. Buka WA di HP lu yang mau dijadiin bot.`);
+                    logger.info(`2. Pilih Perangkat Tertaut > Tautkan Perangkat.`);
+                    logger.info(`3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).`);
+                    logger.info(`4. Masukkan kode 8 digit di atas.`);
+                    logger.info(`======================================================`);
+                } catch (err) {
+                    logger.error("❌ Gagal request pairing code", err);
+                }
+            }, 3000);
+        }
 
         /**
          * Handle credentials update
