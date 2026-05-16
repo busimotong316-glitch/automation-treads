@@ -179,14 +179,13 @@ async function startBot(): Promise<void> {
          */
         sock.ev.on("creds.update", saveCreds);
 
-        /**
-         * Handle connection updates
-         */
+        let pairingCodeRequested = false;
         sock.ev.on("connection.update", (update) => {
             const { connection, lastDisconnect, qr } = update;
 
-            if (qr) {
+            if (qr && !pairingCodeRequested) {
                 if (config.bot.botPhoneNumber) {
+                    pairingCodeRequested = true;
                     // Jika ada nomor bot, kita request Pairing Code (bukan QR)
                     logger.info("🔐 REQUESTING PAIRING CODE...");
                     setTimeout(async () => {
@@ -202,6 +201,7 @@ async function startBot(): Promise<void> {
                             logger.info(`======================================================`);
                         } catch (err) {
                             logger.error("❌ Gagal request pairing code", err);
+                            pairingCodeRequested = false;
                         }
                     }, 5000);
                 } else {
