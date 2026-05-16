@@ -29,10 +29,13 @@ export function initializeDatabase() {
             max: config.database.maxConnections,
             idle_timeout: 30,
             connect_timeout: 30,
-            // Force SSL untuk Supabase (wajib di production)
-            ssl: config.database.url.includes("supabase.co") ? "require" : false,
-            // Mencegah ENETUNREACH: fallback ke IPv4 eksplisit
-            // Node.js kadang mencoba IPv6 dulu di container yang tidak support
+            // SSL wajib untuk Supabase (direct maupun pooler)
+            ssl: (
+                config.database.url.includes("supabase.co") ||
+                config.database.url.includes("pooler.supabase.com")
+            ) ? "require" : false,
+            // prepare: false diperlukan saat menggunakan connection pooler Supabase
+            prepare: false,
             connection: {
                 application_name: "iman-wa-bot",
             },
