@@ -619,6 +619,30 @@ app.post("/products/:id/mark-posted", async (req, res) => {
 });
 
 /**
+ * POST /products/:id/update-image
+ * Update image_url produk setelah gambar di-upload ke Google Drive
+ * Dipanggil oleh n8n setelah node "Make File Public"
+ */
+app.post("/products/:id/update-image", async (req, res) => {
+    const { id } = req.params;
+    const { image_url } = req.body;
+    if (!image_url) {
+        return res.status(400).json({ error: "image_url is required" });
+    }
+    try {
+        await db.instance().execute(
+            // @ts-ignore
+            `UPDATE products SET image_url = '${image_url.replace(/'/g, "''")}' WHERE id = ${parseInt(id)}`
+        );
+        logger.info(`🖼️ Product #${id} image updated to GDrive link`);
+        return res.json({ success: true, id, image_url });
+    } catch (error: any) {
+        logger.error(`❌ Failed to update product #${id} image`, error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * GET /products/stats
  * Statistik produk untuk monitoring
  */
