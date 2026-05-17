@@ -13,10 +13,11 @@ import makeWASocket, {
 } from "@whiskeysockets/baileys";
 import { Boom } from "@hapi/boom";
 import qrcode from "qrcode-terminal";
-import { db, messages, closeDatabaseConnection } from "./db.js";
+import { db, messages, products, closeDatabaseConnection } from "./db.js";
 import { createLogger } from "./logger.js";
 import { config } from "./config.js";
 import { sendToN8n, checkN8nHealth } from "./webhook.js";
+import { scrapeShowcase } from "./scraper.js";
 import express from "express";
 import fs from "node:fs";
 
@@ -469,8 +470,120 @@ app.post("/report", async (req, res) => {
 });
 
 /**
- * Main execution
+ * POST /scrape
+ * Trigger scraping Shopee showcase dan upsert ke database
+ * Dipanggil oleh n8n Cron Workflow 1 (tiap jam 2 pagi)
  */
+app.post("/scrape", async (_req, res) => {
+    logger.info("🔍 Scrape request received from n8n");
+    try {
+        const scrapedProducts = await scrapeShowcase();
+        
+        let inserted = 0;
+
+        for (const product of scrapedProducts) {
+            try {
+                await db.instance()
+                    .insert(products)
+                    .values({
+                        title: product.title,
+                        affiliateLink: product.affiliateLink,
+                        imageUrl: product.imageUrl || null,
+                        price: product.price || null,
+                        isPosted: false,
+                    })
+                    .onConflictDoUpdate({
+                        target: products.affiliateLink,
+                        set: {
+                            title: product.title,
+                            imageUrl: product.imageUrl || null,
+                            price: product.price || null,
+                        },
+                    });
+                inserted++;
+            } catch (err) {
+                logger.warn(`⚠️ Failed to upsert product: ${product.title}`, err);
+            }
+        }
+
+        logger.info(`✅ Scrape complete: ${inserted} products upserted`);
+        return res.json({
+            success: true,
+            total_scraped: scrapedProducts.length,
+            total_upserted: inserted,
+        });
+    } catch (error: any) {
+        logger.error("❌ Scrape endpoint error", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /products/next
+ * Ambil 1 produk yang belum diposting (RANDOM) untuk Workflow 2 Engine Posting
+ */
+app.get("/products/next", async (_req, res) => {
+    try {
+        // Raw query: ambil 1 produk random yang belum diposting
+        const rawResult = await db.instance().execute(
+            // @ts-ignore
+            `SELECT * FROM products WHERE is_posted = false ORDER BY RANDOM() LIMIT 1`
+        );
+
+        const product = (rawResult as any[])[0] || null;
+
+        if (!product) {
+            return res.json({ success: true, product: null, message: "No unposted products found" });
+        }
+
+        logger.info(`📦 Next product for posting: ${product.title}`);
+        return res.json({ success: true, product });
+    } catch (error: any) {
+        logger.error("❌ Failed to get next product", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /products/:id/mark-posted
+ * Update status is_posted = true setelah berhasil posting ke Threads
+ */
+app.post("/products/:id/mark-posted", async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.instance().execute(
+            // @ts-ignore
+            `UPDATE products SET is_posted = true, posted_at = NOW() WHERE id = ${parseInt(id)}`
+        );
+        logger.info(`✅ Product #${id} marked as posted`);
+        return res.json({ success: true, id });
+    } catch (error: any) {
+        logger.error(`❌ Failed to mark product #${id} as posted`, error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * GET /products/stats
+ * Statistik produk untuk monitoring
+ */
+app.get("/products/stats", async (_req, res) => {
+    try {
+        const stats = await db.instance().execute(
+            // @ts-ignore
+            `SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE is_posted = false) as unposted,
+                COUNT(*) FILTER (WHERE is_posted = true) as posted
+            FROM products`
+        );
+        return res.json({ success: true, stats: (stats as any[])[0] });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+
 async function main(): Promise<void> {
     try {
         logger.info("🚀 Starting Iman WhatsApp Bot...");

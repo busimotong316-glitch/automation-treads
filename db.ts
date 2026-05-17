@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { config } from "./config.js";
@@ -15,6 +15,20 @@ export const messages = pgTable("messages", {
     remoteJid: text("remote_jid").notNull(),
     pushName: text("push_name"),
     content: text("content"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Define Products Table (Shopee Affiliate Showcase)
+ */
+export const products = pgTable("products", {
+    id: serial("id").primaryKey(),
+    title: text("title").notNull(),
+    affiliateLink: text("affiliate_link").notNull().unique(),
+    imageUrl: text("image_url"),
+    price: text("price"),
+    isPosted: boolean("is_posted").default(false),
+    postedAt: timestamp("posted_at"),
     createdAt: timestamp("created_at").defaultNow(),
 });
 

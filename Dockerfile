@@ -23,8 +23,19 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install dumb-init untuk proper signal handling
-RUN apk add --no-cache dumb-init
+# Install dumb-init dan Chromium untuk Playwright scraper
+RUN apk add --no-cache \
+    dumb-init \
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Set Playwright agar pakai Chromium dari sistem (bukan download sendiri)
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # Create app user (security best practice)
 RUN addgroup -g 1001 -S nodejs && adduser -S nodejs -u 1001
