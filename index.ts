@@ -26,13 +26,12 @@ import path from "node:path";
 import fs from "node:fs";
 
 const logger = createLogger("Bot");
-const app = express();
-app.use(express.json());
-
-// Serve dashboard static files
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-app.use(express.static(path.join(__dirname, "../public")));
+
+const app = express();
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
 // ── Auth Routes ──────────────────────────────────
 app.post("/auth/register", register);
