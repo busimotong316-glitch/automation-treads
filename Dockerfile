@@ -49,6 +49,9 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application dari builder
 COPY --from=builder /app/dist ./dist
 
+# Copy public folder (dashboard UI)
+COPY --from=builder /app/public ./public
+
 # Create volume untuk auth credentials (persistent)
 RUN mkdir -p auth_info_baileys && chown -R nodejs:nodejs auth_info_baileys
 
