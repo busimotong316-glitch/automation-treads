@@ -18,12 +18,43 @@ import { createLogger } from "./logger.js";
 import { config } from "./config.js";
 import { sendToN8n, checkN8nHealth } from "./webhook.js";
 import { scrapeShowcase } from "./scraper.js";
+import { register, login, requireAuth, getMe, upsertShowcase, deleteShowcase } from "./auth.js";
+import type { AuthRequest } from "./auth.js";
 import express from "express";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import fs from "node:fs";
 
 const logger = createLogger("Bot");
 const app = express();
 app.use(express.json());
+
+// Serve dashboard static files
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+app.use(express.static(path.join(__dirname, "../public")));
+
+// ── Auth Routes ──────────────────────────────────
+app.post("/auth/register", register);
+app.post("/auth/login", login);
+app.get("/api/me", requireAuth as express.RequestHandler, (req, res) => getMe(req as AuthRequest, res));
+app.post("/api/showcase", requireAuth as express.RequestHandler, (req, res) => upsertShowcase(req as AuthRequest, res));
+app.delete("/api/showcase/:id", requireAuth as express.RequestHandler, (req, res) => deleteShowcase(req as AuthRequest, res));
+
+// ── Bot Status Endpoint ───────────────────────────
+app.get("/api/status", (_req, res) => {
+    res.json({
+        connected: botState.isRunning && !!botState.sock,
+        bot_number: config.bot.ownerNumber || null,
+    });
+});
+
+// ── QR Code Endpoint (SSE) ────────────────────────
+let latestQR: string | null = null;
+
+app.get("/api/qr", (_req, res) => {
+    res.json({ qr: latestQR, connected: botState.isRunning && !!botState.sock });
+});
 
 /**
  * Type definitions
@@ -190,6 +221,9 @@ async function startBot(): Promise<void> {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr && !pairingCodeRequested) {
+                // Simpan QR terbaru untuk dashboard API
+                latestQR = qr;
+
                 // Skip pairing request if we already have a valid auth folder and session is registered
                 if (fs.existsSync('auth_info_baileys') && state.creds && state.creds.registered) {
                     logger.debug('Auth folder exists with registered session; skipping pairing code request.');
@@ -218,6 +252,11 @@ async function startBot(): Promise<void> {
                     logger.info('🔐 SCAN QR BELOW / SCAN QR DI BAWAH');
                     qrcode.generate(qr, { small: true });
                 }
+            }
+
+            // Reset QR saat sudah connected
+            if (connection === "open") {
+                latestQR = null;
             }
 
             if (connection === "close") {
@@ -470,14 +509,30 @@ app.post("/report", async (req, res) => {
 });
 
 /**
+ * GET /api/products — Daftar semua produk (untuk dashboard)
+ */
+app.get("/api/products", async (_req, res) => {
+    try {
+        const result = await db.instance().execute(
+            // @ts-ignore
+            `SELECT * FROM products ORDER BY created_at DESC LIMIT 200`
+        );
+        return res.json({ success: true, products: result });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * POST /scrape
  * Trigger scraping Shopee showcase dan upsert ke database
  * Dipanggil oleh n8n Cron Workflow 1 (tiap jam 2 pagi)
  */
-app.post("/scrape", async (_req, res) => {
-    logger.info("🔍 Scrape request received from n8n");
+app.post("/scrape", async (req, res) => {
+    const { showcase_url } = req.body || {};
+    logger.info(`🔍 Scrape request received. URL: ${showcase_url || 'default'}`);
     try {
-        const scrapedProducts = await scrapeShowcase();
+        const scrapedProducts = await scrapeShowcase(showcase_url || undefined);
         
         let inserted = 0;
 

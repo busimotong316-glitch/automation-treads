@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { config } from "./config.js";
@@ -19,6 +19,30 @@ export const messages = pgTable("messages", {
 });
 
 /**
+ * Define Users Table (Auth)
+ */
+export const users = pgTable("users", {
+    id: serial("id").primaryKey(),
+    email: text("email").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    storeName: text("store_name"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
+ * Define Showcase Configs Table (per user)
+ */
+export const showcaseConfigs = pgTable("showcase_configs", {
+    id: serial("id").primaryKey(),
+    userId: integer("user_id").references(() => users.id),
+    showcaseUrl: text("showcase_url").notNull(),
+    label: text("label"),
+    isActive: boolean("is_active").default(true),
+    lastScrapedAt: timestamp("last_scraped_at"),
+    createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
  * Define Products Table (Shopee Affiliate Showcase)
  */
 export const products = pgTable("products", {
@@ -29,6 +53,8 @@ export const products = pgTable("products", {
     price: text("price"),
     isPosted: boolean("is_posted").default(false),
     postedAt: timestamp("posted_at"),
+    userId: integer("user_id").references(() => users.id),
+    showcaseConfigId: integer("showcase_config_id").references(() => showcaseConfigs.id),
     createdAt: timestamp("created_at").defaultNow(),
 });
 

@@ -16,13 +16,15 @@ export interface ShopeeProduct {
     price?: string;
 }
 
-const SHOWCASE_URL = "https://collshp.com/shinkowstore";
+const DEFAULT_SHOWCASE_URL = "https://collshp.com/shinkowstore";
 
 /**
  * Scrape semua produk dari halaman showcase Shopee
+ * @param url - URL showcase yang akan di-scrape (default: shinkowstore)
  */
-export async function scrapeShowcase(): Promise<ShopeeProduct[]> {
-    logger.info(`🔍 Starting scrape: ${SHOWCASE_URL}`);
+export async function scrapeShowcase(url?: string): Promise<ShopeeProduct[]> {
+    const targetUrl = url || DEFAULT_SHOWCASE_URL;
+    logger.info(`🔍 Starting scrape: ${targetUrl}`);
 
     const browser = await chromium.launch({
         headless: true,
@@ -47,7 +49,7 @@ export async function scrapeShowcase(): Promise<ShopeeProduct[]> {
         });
 
         logger.info("🌐 Opening showcase page...");
-        await page.goto(SHOWCASE_URL, {
+        await page.goto(targetUrl, {
             waitUntil: "networkidle",
             timeout: 60000,
         });

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Traffic Harvester — Automate Your Affiliate</title>
+  <meta name="description" content="Dashboard automasi Shopee Affiliate. Scraping showcase, posting otomatis ke Threads.">
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js" defer></script>
+</head>
+<body>
+
+<!-- ═══ AUTH PAGE ═══ -->
+<div id="authPage" class="auth-page">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <h1>⚡ Traffic Harvester</h1>
+      <p>Automate Your Affiliate Game</p>
+    </div>
+    <div id="authMsg" class="msg"></div>
+
+    <!-- Login Form -->
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="form-group">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="masukkan@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="loginPass">Password</label>
+        <input type="password" id="loginPass" placeholder="••••••" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="loginBtn">Masuk</button>
+      <div class="auth-switch">Belum punya akun? <a onclick="toggleAuth('register')">Daftar gratis</a></div>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" style="display:none" onsubmit="return handleRegister(event)">
+      <div class="form-group">
+        <label for="regEmail">Email</label>
+        <input type="email" id="regEmail" placeholder="masukkan@email.com" required>
+      </div>
+      <div class="form-group">
+        <label for="regPass">Password</label>
+        <input type="password" id="regPass" placeholder="Minimal 6 karakter" required minlength="6">
+      </div>
+      <div class="form-group">
+        <label for="regStore">Nama Toko (opsional)</label>
+        <input type="text" id="regStore" placeholder="Nama toko kamu">
+      </div>
+      <button type="submit" class="btn btn-primary" id="regBtn">Daftar</button>
+      <div class="auth-switch">Sudah punya akun? <a onclick="toggleAuth('login')">Masuk</a></div>
+    </form>
+  </div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div id="dashboardPage" style="display:none">
+
+  <!-- Mobile Header -->
+  <div class="mobile-header">
+    <button class="hamburger" onclick="toggleSidebar()">
+      <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+    </button>
+    <span style="font-weight:600;font-size:14px">⚡ Traffic Harvester</span>
+    <span></span>
+  </div>
+  <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="logo">
+      <h2>⚡ Traffic Harvester</h2>
+      <span>Dashboard v1.0</span>
+    </div>
+    <div class="nav-item active" onclick="goTo('home')" data-page="home">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      Home
+    </div>
+    <div class="nav-item" onclick="goTo('connect')" data-page="connect">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+      WA Connect
+    </div>
+    <div class="nav-item" onclick="goTo('showcase')" data-page="showcase">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 6h18M16 10a4 4 0 01-8 0"/></svg>
+      Showcase
+    </div>
+    <div class="nav-item" onclick="goTo('products')" data-page="products">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+      Produk
+    </div>
+    <div class="nav-bottom">
+      <div class="nav-item" onclick="logout()">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+        Logout
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+
+    <!-- ── HOME ── -->
+    <div id="page-home" class="page active">
+      <div class="main-header">
+        <h1>👋 Selamat datang, <span id="userName">User</span></h1>
+        <div><span class="status-dot" id="statusDot"></span><span id="statusText">Checking...</span></div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="label">Total Produk</div><div class="value accent" id="statTotal">-</div></div>
+        <div class="stat-card"><div class="label">Belum Diposting</div><div class="value" style="color:var(--warn)" id="statPending">-</div></div>
+        <div class="stat-card"><div class="label">Sudah Diposting</div><div class="value" style="color:var(--accent2)" id="statPosted">-</div></div>
+        <div class="stat-card"><div class="label">Showcase Aktif</div><div class="value accent" id="statShowcase">-</div></div>
+      </div>
+      <div class="card">
+        <h3>🚀 Quick Start</h3>
+        <p style="color:var(--text2);font-size:14px;line-height:1.8">
+          1. <strong>Connect WhatsApp</strong> — Buka halaman WA Connect, input nomor bot, lalu scan QR.<br>
+          2. <strong>Tambah Showcase</strong> — Paste URL showcase Shopee kamu di halaman Showcase.<br>
+          3. <strong>Otomatis!</strong> — n8n akan scrape produk setiap jam 2 pagi dan posting ke Threads.
+        </p>
+      </div>
+    </div>
+
+    <!-- ── WA CONNECT ── -->
+    <div id="page-connect" class="page">
+      <div class="main-header"><h1>📱 Connect WhatsApp Bot</h1></div>
+      <div class="card">
+        <h3>Nomor Bot WhatsApp</h3>
+        <div style="display:flex;gap:10px;margin-bottom:20px">
+          <input type="text" id="botPhoneInput" placeholder="contoh: 6281234567890" style="flex:1;padding:12px 16px;background:var(--bg2);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);font-size:14px;outline:none">
+          <button class="btn btn-primary" style="width:auto;padding:12px 24px" onclick="requestQR()">Connect</button>
+        </div>
+        <div class="qr-container" id="qrContainer">
+          <div class="qr-placeholder">
+            <p style="font-size:14px">Masukkan nomor bot lalu klik Connect</p>
+            <p style="font-size:12px;margin-top:6px">QR Code akan muncul di sini</p>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:16px">
+          <span class="status-dot" id="qrStatusDot"></span>
+          <span id="qrStatusText" style="font-size:13px;color:var(--text2)">Belum terkoneksi</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SHOWCASE ── -->
+    <div id="page-showcase" class="page">
+      <div class="main-header"><h1>🛒 Kelola Showcase</h1></div>
+      <div class="card">
+        <h3>Tambah Showcase Baru</h3>
+        <form onsubmit="return addShowcase(event)">
+          <div class="form-group">
+            <label>URL Showcase</label>
+            <input type="url" id="showcaseUrl" placeholder="https://collshp.com/namatokomu" required>
+          </div>
+          <div class="form-group">
+            <label>Label (opsional)</label>
+            <input type="text" id="showcaseLabel" placeholder="Nama toko / label">
+          </div>
+          <button type="submit" class="btn btn-primary">Simpan Showcase</button>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Showcase Terdaftar</h3>
+        <div id="showcaseList"><div class="empty-state"><p>Belum ada showcase. Tambah di atas!</p></div></div>
+      </div>
+    </div>
+
+    <!-- ── PRODUCTS ── -->
+    <div id="page-products" class="page">
+      <div class="main-header"><h1>📦 Monitor Produk</h1></div>
+      <div class="filters">
+        <button class="filter-btn active" onclick="filterProducts('all',this)">Semua</button>
+        <button class="filter-btn" onclick="filterProducts('pending',this)">Belum Post</button>
+        <button class="filter-btn" onclick="filterProducts('posted',this)">Sudah Post</button>
+      </div>
+      <div id="productGrid" class="product-grid">
+        <div class="empty-state"><p>Belum ada produk. Tambah showcase dan tunggu scraping otomatis.</p></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
