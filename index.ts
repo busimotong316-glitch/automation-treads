@@ -200,9 +200,9 @@ async function startBot(): Promise<void> {
                         try {
                             const code = await sock.requestPairingCode(config.bot.botPhoneNumber);
                             logger.info('======================================================');
-                            logger.info(`🔑 KODE PAIRING WA LU: ${code}`);
+                            logger.info(`🔑 KODE PAIRING WA : ${code}`);
                             logger.info('Langkah-langkah:');
-                            logger.info('1. Buka WA di HP lu yang mau dijadiin bot.');
+                            logger.info('1. Buka WA di HP yang mau dijadiin bot.');
                             logger.info('2. Pilih Perangkat Tertaut > Tautkan Perangkat.');
                             logger.info("3. Pilih 'Tautkan dengan Nomor Telepon Saja' (di bawah).");
                             logger.info('4. Masukkan kode 8 digit di atas.');
@@ -396,32 +396,6 @@ async function startBot(): Promise<void> {
             }
         });
 
-        /**
-         * n8n Report Endpoint
-         * Digunakan n8n untuk lapor balik (callback)
-         */
-        app.post("/report", async (req, res) => {
-            try {
-                const { jid, remoteJid, message } = req.body;
-                const targetJid = jid || remoteJid;
-                
-                if (!targetJid || !message) {
-                    return res.status(400).json({ error: "Missing jid or message" });
-                }
-
-                logger.info(`📨 Sending report from n8n to ${targetJid}: ${message}`);
-                await sock.sendMessage(targetJid, { text: message });
-                
-                return res.json({ success: true });
-            } catch (error: any) {
-                logger.error("Error sending n8n report", error);
-                return res.status(500).json({ error: error.message });
-            }
-        });
-
-        app.listen(3000, "0.0.0.0", () => {
-            logger.info("📡 Report API listening on port 3000");
-        });
     } catch (error) {
         logger.error("❌ Failed to start bot", error);
         botState.isConnecting = false;
@@ -460,12 +434,52 @@ async function shutdown(signal: string): Promise<void> {
 }
 
 /**
+ * n8n Report Endpoint
+ * Digunakan n8n untuk lapor balik (callback) dengan built-in reconnect queue
+ */
+app.post("/report", async (req, res) => {
+    try {
+        const { jid, remoteJid, message } = req.body;
+        const targetJid = jid || remoteJid;
+        
+        if (!targetJid || !message) {
+            return res.status(400).json({ error: "Missing jid or message" });
+        }
+
+        // Jeda waktu maksimal untuk menunggu koneksi siap (15 detik)
+        let attempts = 0;
+        while (!botState.isRunning || !botState.sock) {
+            if (attempts >= 15) {
+                logger.error("❌ Cannot send report: Bot connection is offline");
+                return res.status(503).json({ error: "WhatsApp bot is currently offline. Please wait for reconnection." });
+            }
+            logger.warn(`⏳ WhatsApp bot connection is not ready. Waiting to send report... (Attempt ${attempts + 1}/15)`);
+            await delay(1000);
+            attempts++;
+        }
+
+        logger.info(`📨 Sending report from n8n to ${targetJid}: ${message}`);
+        await botState.sock.sendMessage(targetJid, { text: message });
+        
+        return res.json({ success: true });
+    } catch (error: any) {
+        logger.error("Error sending n8n report", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * Main execution
  */
 async function main(): Promise<void> {
     try {
         logger.info("🚀 Starting Iman WhatsApp Bot...");
         logger.info(`📋 Config: ${JSON.stringify(config, null, 2)}`);
+
+        // Start Express server once at startup
+        app.listen(3000, "0.0.0.0", () => {
+            logger.info("📡 Report API listening on port 3000");
+        });
 
         await startBot();
 
