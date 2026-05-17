@@ -7,16 +7,10 @@
 import dns from "node:dns";
 dns.setDefaultResultOrder("ipv4first");
 
-import fs from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 import { createLogger } from "./logger.js";
 
 const logger = createLogger("Migrator");
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Pakai pooler URL dari .env
 const DATABASE_URL = process.env.DATABASE_URL 
