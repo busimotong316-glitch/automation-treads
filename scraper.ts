@@ -56,21 +56,20 @@ export async function scrapeShowcase(url?: string): Promise<ShopeeProduct[]> {
 
         // Tunggu konten produk muncul
         logger.info("⏳ Waiting for product content to load...");
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(5000);
 
-        // Scroll ke bawah untuk load semua produk (lazy loading)
-        await autoScroll(page);
+        logger.info("📦 Scrolling virtualized list & extracting products...");
 
-        logger.info("📦 Extracting product data...");
-
-        // Extract data produk dari DOM
-        // Kode di dalam evaluate() berjalan di browser context, bukan Node.js
-        const extractedProducts = await page.evaluate((): Array<{
+        // Halaman showcase menggunakan ReactVirtualized yang hanya merender
+        // produk yang terlihat di layar. Kita perlu scroll CONTAINER internalnya
+        // (bukan window) dan mengumpulkan produk secara bertahap.
+        const extractedProducts = await page.evaluate(async (): Promise<Array<{
             title: string;
             affiliateLink: string;
             imageUrl: string;
             price: string;
-        }> => {
+        }>> => {
+            const seen = new Set<string>();
             const results: Array<{
                 title: string;
                 affiliateLink: string;
@@ -78,45 +77,87 @@ export async function scrapeShowcase(url?: string): Promise<ShopeeProduct[]> {
                 price: string;
             }> = [];
 
-            // Ambil semua link yang mengarah ke produk Shopee
-            const allLinks = Array.from(document.querySelectorAll("a"));
-            const productLinks = allLinks.filter(
-                (link) =>
-                    link.href &&
-                    (link.href.includes("shopee") ||
-                        link.href.includes("collshp") ||
-                        link.href.includes("s.shopee"))
-            );
+            function collectProducts() {
+                const allLinks = Array.from(document.querySelectorAll("a"));
+                const productLinks = allLinks.filter(
+                    (link) =>
+                        link.href &&
+                        (link.href.includes("shopee") ||
+                            link.href.includes("collshp") ||
+                            link.href.includes("s.shopee"))
+                );
 
-            for (const link of productLinks) {
-                // Cari gambar di dalam link
-                const img = link.querySelector("img");
-                const imageUrl = img?.src || img?.getAttribute("data-src") || "";
+                for (const link of productLinks) {
+                    if (seen.has(link.href)) continue;
+                    seen.add(link.href);
 
-                // Cari judul produk
-                const titleEl = link.querySelector("h1, h2, h3, h4, p, span, .title, .name");
-                const title = titleEl?.textContent?.trim() 
-                    || link.getAttribute("title") 
-                    || link.getAttribute("aria-label") 
-                    || "";
+                    const img = link.querySelector("img");
+                    const imageUrl = img?.src || img?.getAttribute("data-src") || "";
 
-                // Cari harga
-                const priceEl = link.querySelector("[class*='price']");
-                const price = priceEl?.textContent?.trim() || "";
+                    const titleEl = link.querySelector("h1, h2, h3, h4, p, span, .title, .name");
+                    const title = titleEl?.textContent?.trim()
+                        || link.getAttribute("title")
+                        || link.getAttribute("aria-label")
+                        || "";
 
-                if (title && link.href) {
-                    results.push({
-                        title,
-                        affiliateLink: link.href,
-                        imageUrl,
-                        price,
-                    });
+                    const priceEl = link.querySelector("[class*='price']");
+                    const price = priceEl?.textContent?.trim() || "";
+
+                    if (title && link.href) {
+                        results.push({ title, affiliateLink: link.href, imageUrl, price });
+                    }
+                }
+            }
+
+            // Kumpulkan produk awal yang sudah terrender
+            collectProducts();
+
+            // Cari container ReactVirtualized (atau scrollable container lainnya)
+            const gridContainer = document.querySelector(
+                ".ReactVirtualized__Grid, .ReactVirtualized__List, [role='grid'][scrollable], [class*='virtual'], [style*='overflow: auto'], [style*='overflow:auto'], [style*='overflow-y: auto'], [style*='overflow-y:auto'], [style*='overflow: scroll'], [style*='overflow:scroll']"
+            ) as HTMLElement | null;
+
+            if (gridContainer) {
+                // Scroll container virtualized secara bertahap
+                const scrollDistance = 300;
+                let noChangeCount = 0;
+                let lastProductCount = results.length;
+
+                for (let i = 0; i < 50; i++) { // max 50 scroll attempts
+                    gridContainer.scrollTop += scrollDistance;
+                    await new Promise(r => setTimeout(r, 500));
+                    collectProducts();
+
+                    if (results.length === lastProductCount) {
+                        noChangeCount++;
+                        if (noChangeCount >= 5) break; // Tidak ada produk baru 5x berturut-turut
+                    } else {
+                        noChangeCount = 0;
+                        lastProductCount = results.length;
+                    }
+                }
+            } else {
+                // Fallback: scroll window biasa jika bukan ReactVirtualized
+                let noChangeCount = 0;
+                let lastProductCount = results.length;
+
+                for (let i = 0; i < 30; i++) {
+                    window.scrollBy(0, 400);
+                    await new Promise(r => setTimeout(r, 500));
+                    collectProducts();
+
+                    if (results.length === lastProductCount) {
+                        noChangeCount++;
+                        if (noChangeCount >= 8) break;
+                    } else {
+                        noChangeCount = 0;
+                        lastProductCount = results.length;
+                    }
                 }
             }
 
             return results;
         });
-
 
         // Filter duplikat berdasarkan affiliate link
         const seen = new Set<string>();
@@ -143,39 +184,3 @@ export async function scrapeShowcase(url?: string): Promise<ShopeeProduct[]> {
     return products;
 }
 
-/**
- * Auto scroll halaman untuk trigger lazy loading secara robust
- */
-async function autoScroll(page: any): Promise<void> {
-    await page.evaluate(async () => {
-        await new Promise<void>((resolve) => {
-            let totalHeight = 0;
-            const distance = 400; // Jarak scroll per interval
-            let lastHeight = document.body.scrollHeight;
-            let noChangeCount = 0;
-
-            const timer = setInterval(() => {
-                window.scrollBy(0, distance);
-                totalHeight += distance;
-
-                const currentHeight = document.body.scrollHeight;
-                if (currentHeight === lastHeight) {
-                    noChangeCount++;
-                } else {
-                    noChangeCount = 0;
-                    lastHeight = currentHeight;
-                }
-
-                // Jika tinggi halaman tidak berubah selama 8 kali interval (sekitar 2 detik)
-                // atau total scroll sudah sangat jauh (anti-loop), stop scroll.
-                if (noChangeCount >= 8 || totalHeight >= 30000) {
-                    clearInterval(timer);
-                    resolve();
-                }
-            }, 250);
-        });
-    });
-
-    // Berikan jeda ekstra agar gambar lazy-load ter-render dengan sempurna
-    await page.waitForTimeout(3000);
-}
