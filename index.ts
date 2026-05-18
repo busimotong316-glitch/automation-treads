@@ -765,9 +765,8 @@ async function main(): Promise<void> {
         logger.info(`📋 Config: ${JSON.stringify(config, null, 2)}`);
 
         // Start Express server once at startup
-        const PORT = parseInt(process.env.PORT || "3000");
-        app.listen(PORT, "0.0.0.0", () => {
-            logger.info(`📡 Report API listening on port ${PORT}`);
+        app.listen(3000, "0.0.0.0", () => {
+            logger.info("📡 Report API listening on port 3000");
         });
 
         await startBot();
