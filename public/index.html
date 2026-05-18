@@ -124,11 +124,13 @@
     <!-- ── WA CONNECT ── -->
     <div id="page-connect" class="page">
       <div class="main-header"><h1>📱 Connect WhatsApp Bot</h1></div>
-      <div class="card">
+      
+      <!-- State: Disconnected — show connect form -->
+      <div class="card" id="connectCard">
         <h3>Nomor Bot WhatsApp</h3>
         <div style="display:flex;gap:10px;margin-bottom:20px">
           <input type="text" id="botPhoneInput" placeholder="contoh: 6281234567890" style="flex:1;padding:12px 16px;background:var(--bg2);border:1px solid var(--glass-border);border-radius:10px;color:var(--text);font-size:14px;outline:none">
-          <button class="btn btn-primary" style="width:auto;padding:12px 24px" onclick="requestQR()">Connect</button>
+          <button class="btn btn-primary" style="width:auto;padding:12px 24px" id="connectBtn" onclick="requestQR()">Connect</button>
         </div>
         <div class="qr-container" id="qrContainer">
           <div class="qr-placeholder">
@@ -139,6 +141,19 @@
         <div style="text-align:center;margin-top:16px">
           <span class="status-dot" id="qrStatusDot"></span>
           <span id="qrStatusText" style="font-size:13px;color:var(--text2)">Belum terkoneksi</span>
+        </div>
+      </div>
+
+      <!-- State: Connected — show disconnect option -->
+      <div class="card" id="connectedCard" style="display:none">
+        <div style="text-align:center;padding:30px 0">
+          <div class="status-dot green" style="width:24px;height:24px;margin:0 auto 16px"></div>
+          <h3 style="color:var(--accent2);margin-bottom:8px">✅ Bot Terkoneksi</h3>
+          <p style="color:var(--text2);font-size:14px;margin-bottom:24px">WhatsApp bot sedang aktif dan berjalan.</p>
+          <button class="btn" style="background:linear-gradient(135deg,#ef4444,#dc2626);width:auto;padding:12px 32px;font-size:14px" id="disconnectBtn" onclick="disconnectBot()">
+            🔌 Disconnect Bot
+          </button>
+          <p style="color:var(--text2);font-size:12px;margin-top:12px">Disconnect untuk mengganti nomor bot atau scan ulang QR.</p>
         </div>
       </div>
     </div>

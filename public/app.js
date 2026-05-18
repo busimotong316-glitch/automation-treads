@@ -102,6 +102,7 @@ async function enterDashboard() {
   loadStats();
   loadShowcases();
   loadProducts();
+  checkConnectionState();
 }
 
 // ── Navigation ──
@@ -155,12 +156,27 @@ async function loadStats() {
   } catch { /* silent */ }
 }
 
-// ── QR ──
+// ── QR & Connection ──
+function showConnectCard() {
+  document.getElementById('connectCard').style.display = '';
+  document.getElementById('connectedCard').style.display = 'none';
+}
+
+function showConnectedCard() {
+  document.getElementById('connectCard').style.display = 'none';
+  document.getElementById('connectedCard').style.display = '';
+}
+
 function requestQR() {
   const phone = document.getElementById('botPhoneInput').value.trim();
   if (!phone) return alert('Masukkan nomor bot WA');
+  const btn = document.getElementById('connectBtn');
+  btn.textContent = 'Connecting...';
+  btn.disabled = true;
   const container = document.getElementById('qrContainer');
-  container.innerHTML = '<div class="qr-placeholder"><div class="status-dot yellow"></div><p>Meminta QR Code...</p></div>';
+  container.innerHTML = '<div class="qr-placeholder"><div class="status-dot yellow" style="animation:pulse 1.5s infinite"></div><p style="margin-top:12px">Menghubungkan ke server...</p></div>';
+  document.getElementById('qrStatusDot').className = 'status-dot yellow';
+  document.getElementById('qrStatusText').textContent = 'Connecting...';
   if (qrPollInterval) clearInterval(qrPollInterval);
   qrPollInterval = setInterval(pollQR, 3000);
   pollQR();
@@ -170,21 +186,63 @@ async function pollQR() {
   try {
     const data = await api('/api/qr');
     const container = document.getElementById('qrContainer');
+    const btn = document.getElementById('connectBtn');
     if (data.connected) {
-      container.innerHTML = '<div style="text-align:center"><div class="status-dot green" style="width:20px;height:20px;margin:0 auto 12px"></div><p style="font-size:16px;font-weight:600;color:var(--accent2)">✅ Bot Terkoneksi!</p></div>';
-      document.getElementById('qrStatusDot').className = 'status-dot green';
-      document.getElementById('qrStatusText').textContent = 'Bot terkoneksi';
+      // Connected — switch to connected card
+      showConnectedCard();
       if (qrPollInterval) { clearInterval(qrPollInterval); qrPollInterval = null; }
+      btn.textContent = 'Connect';
+      btn.disabled = false;
       loadStatus();
     } else if (data.qr) {
+      // QR available — show it
       container.innerHTML = '<canvas id="qrCanvas"></canvas><p style="margin-top:12px;font-size:13px;color:var(--text2)">Scan dengan WhatsApp</p>';
       if (typeof QRCode !== 'undefined') {
         QRCode.toCanvas(document.getElementById('qrCanvas'), data.qr, { width: 220, margin: 2, color: { dark: '#ffffff', light: '#00000000' } });
       }
       document.getElementById('qrStatusDot').className = 'status-dot yellow';
       document.getElementById('qrStatusText').textContent = 'Menunggu scan...';
+      btn.textContent = 'Connect';
+      btn.disabled = false;
+    } else if (data.connecting) {
+      // Connecting state — show spinner
+      container.innerHTML = '<div class="qr-placeholder"><div class="status-dot yellow" style="animation:pulse 1.5s infinite"></div><p style="margin-top:12px">Menghubungkan ke WhatsApp...</p></div>';
+      document.getElementById('qrStatusDot').className = 'status-dot yellow';
+      document.getElementById('qrStatusText').textContent = 'Connecting...';
     }
   } catch { /* silent */ }
+}
+
+async function disconnectBot() {
+  if (!confirm('Yakin mau disconnect bot? Kamu perlu scan QR ulang untuk menghubungkan kembali.')) return;
+  const btn = document.getElementById('disconnectBtn');
+  btn.textContent = 'Disconnecting...';
+  btn.disabled = true;
+  try {
+    await api('/api/disconnect', { method: 'POST' });
+    showConnectCard();
+    document.getElementById('qrContainer').innerHTML = '<div class="qr-placeholder"><p style="font-size:14px">Bot berhasil di-disconnect.</p><p style="font-size:12px;margin-top:6px">Masukkan nomor baru dan klik Connect.</p></div>';
+    document.getElementById('qrStatusDot').className = 'status-dot red';
+    document.getElementById('qrStatusText').textContent = 'Disconnected';
+    loadStatus();
+  } catch (err) {
+    alert('Gagal disconnect: ' + err.message);
+  } finally {
+    btn.textContent = '🔌 Disconnect Bot';
+    btn.disabled = false;
+  }
+}
+
+// Auto-detect connection state when page loads
+async function checkConnectionState() {
+  try {
+    const data = await api('/api/qr');
+    if (data.connected) {
+      showConnectedCard();
+    } else {
+      showConnectCard();
+    }
+  } catch { showConnectCard(); }
 }
 
 // ── Showcase ──

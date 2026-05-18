@@ -44,6 +44,7 @@ app.delete("/api/showcase/:id", requireAuth as express.RequestHandler, (req, res
 app.get("/api/status", (_req, res) => {
     res.json({
         connected: botState.isRunning && !!botState.sock,
+        connecting: botState.isConnecting,
         bot_number: config.bot.ownerNumber || null,
     });
 });
@@ -52,7 +53,38 @@ app.get("/api/status", (_req, res) => {
 let latestQR: string | null = null;
 
 app.get("/api/qr", (_req, res) => {
-    res.json({ qr: latestQR, connected: botState.isRunning && !!botState.sock });
+    res.json({
+        qr: latestQR,
+        connected: botState.isRunning && !!botState.sock,
+        connecting: botState.isConnecting,
+    });
+});
+
+// ── Disconnect Bot Endpoint ───────────────────────
+app.post("/api/disconnect", async (_req, res) => {
+    try {
+        if (botState.sock) {
+            try {
+                await botState.sock.logout();
+            } catch {
+                // Force close if logout fails
+                botState.sock.end(undefined);
+            }
+            botState.sock = null;
+        }
+        botState.isRunning = false;
+        botState.isConnecting = false;
+        latestQR = null;
+
+        // Clear auth folder so a new QR is generated next time
+        clearAuthFolder();
+
+        logger.info("🔌 Bot disconnected via dashboard");
+        return res.json({ success: true, message: "Bot berhasil di-disconnect" });
+    } catch (error: any) {
+        logger.error("❌ Failed to disconnect bot", error);
+        return res.status(500).json({ error: error.message });
+    }
 });
 
 /**
