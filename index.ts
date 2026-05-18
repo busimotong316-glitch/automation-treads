@@ -599,6 +599,47 @@ app.get("/products/next", async (_req, res) => {
 });
 
 /**
+ * GET /products/next-image-upload
+ * Mengambil 1 produk yang gambarnya masih link Shopee (belum di-upload ke GDrive)
+ */
+app.get("/products/next-image-upload", async (_req, res) => {
+    try {
+        const rawResult = await db.instance().execute(
+            // @ts-ignore
+            `SELECT * FROM products WHERE image_url IS NOT NULL AND image_url NOT LIKE '%drive.google.com%' LIMIT 1`
+        );
+        const product = (rawResult as any[])[0] || null;
+        return res.json({ success: true, product });
+    } catch (error: any) {
+        logger.error("❌ Failed to get next product for image upload", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * POST /products/:id/update-image
+ * Update image_url produk setelah gambar di-upload ke Google Drive
+ */
+app.post("/products/:id/update-image", async (req, res) => {
+    const { id } = req.params;
+    const { image_url } = req.body;
+    if (!image_url) {
+        return res.status(400).json({ error: "image_url is required" });
+    }
+    try {
+        await db.instance().execute(
+            // @ts-ignore
+            `UPDATE products SET image_url = '${image_url.replace(/'/g, "''")}' WHERE id = ${parseInt(id)}`
+        );
+        logger.info(`🖼️ Product #${id} image updated to GDrive link`);
+        return res.json({ success: true, id, image_url });
+    } catch (error: any) {
+        logger.error(`❌ Failed to update product #${id} image`, error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * POST /products/:id/mark-posted
  * Update status is_posted = true setelah berhasil posting ke Threads
  */
