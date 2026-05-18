@@ -319,22 +319,36 @@ function filterProducts(filter, btn) {
   renderProducts(filtered);
 }
 
+function getDisplayImageUrl(url) {
+  if (!url) return null;
+  // Convert Google Drive download URL to displayable thumbnail
+  // drive.google.com/uc?export=download&id=FILE_ID → lh3.googleusercontent.com/d/FILE_ID
+  const driveMatch = url.match(/drive\.google\.com\/uc\?.*id=([a-zA-Z0-9_-]+)/);
+  if (driveMatch) return 'https://lh3.googleusercontent.com/d/' + driveMatch[1];
+  // drive.google.com/file/d/FILE_ID/... → lh3.googleusercontent.com/d/FILE_ID
+  const driveMatch2 = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch2) return 'https://lh3.googleusercontent.com/d/' + driveMatch2[1];
+  return url;
+}
+
 function renderProducts(list) {
   const grid = document.getElementById('productGrid');
   if (!list.length) {
     grid.innerHTML = '<div class="empty-state"><p>Belum ada produk.</p></div>';
     return;
   }
-  grid.innerHTML = list.map(p => `
+  grid.innerHTML = list.map(p => {
+    const imgUrl = getDisplayImageUrl(p.image_url);
+    return `
     <div class="product-card fade-in">
-      ${p.image_url ? `<img class="thumb" src="${escHtml(p.image_url)}" alt="" onerror="this.style.display='none'">` : '<div class="thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:12px">No Image</div>'}
+      ${imgUrl ? `<img class="thumb" src="${escHtml(imgUrl)}" alt="" onerror="this.style.display='none'">` : '<div class="thumb" style="display:flex;align-items:center;justify-content:center;color:var(--text2);font-size:12px">No Image</div>'}
       <div class="body">
         <div class="title">${escHtml(p.title)}</div>
         ${p.price ? `<div class="price">${escHtml(p.price)}</div>` : ''}
         <span class="badge ${p.is_posted ? 'posted' : 'pending'}">${p.is_posted ? '✅ Sudah Diposting' : '⏳ Belum Diposting'}</span>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function escHtml(s) {
