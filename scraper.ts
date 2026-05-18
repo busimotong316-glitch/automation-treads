@@ -144,26 +144,38 @@ export async function scrapeShowcase(url?: string): Promise<ShopeeProduct[]> {
 }
 
 /**
- * Auto scroll halaman untuk trigger lazy loading
+ * Auto scroll halaman untuk trigger lazy loading secara robust
  */
 async function autoScroll(page: any): Promise<void> {
     await page.evaluate(async () => {
         await new Promise<void>((resolve) => {
             let totalHeight = 0;
-            const distance = 300;
+            const distance = 400; // Jarak scroll per interval
+            let lastHeight = document.body.scrollHeight;
+            let noChangeCount = 0;
+
             const timer = setInterval(() => {
-                const scrollHeight = document.body.scrollHeight;
                 window.scrollBy(0, distance);
                 totalHeight += distance;
 
-                if (totalHeight >= scrollHeight) {
+                const currentHeight = document.body.scrollHeight;
+                if (currentHeight === lastHeight) {
+                    noChangeCount++;
+                } else {
+                    noChangeCount = 0;
+                    lastHeight = currentHeight;
+                }
+
+                // Jika tinggi halaman tidak berubah selama 8 kali interval (sekitar 2 detik)
+                // atau total scroll sudah sangat jauh (anti-loop), stop scroll.
+                if (noChangeCount >= 8 || totalHeight >= 30000) {
                     clearInterval(timer);
                     resolve();
                 }
-            }, 200);
+            }, 250);
         });
     });
 
-    // Tunggu lazy-loaded content muncul
-    await page.waitForTimeout(2000);
+    // Berikan jeda ekstra agar gambar lazy-load ter-render dengan sempurna
+    await page.waitForTimeout(3000);
 }
