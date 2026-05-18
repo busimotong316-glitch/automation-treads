@@ -1,145 +1,100 @@
-# WhatsApp Bot - n8n Bridge
+# ⚡ Traffic Harvester — WhatsApp Bot & Shopee Showcase Scraper
 
-A robust WhatsApp bot that serves as a bridge to n8n webhooks, built with Baileys and Drizzle ORM for PostgreSQL/Supabase persistence.
+A robust, premium automated affiliate marketing engine that connects your WhatsApp bot, Shopee showcases, and n8n production workflows. The project features a Playwright-core scraping agent, multi-device Baileys WhatsApp integration, and a modern, state-of-the-art web administration dashboard.
 
-## 🚀 Features
+---
 
-- ✅ **WhatsApp Listener:** Real-time message listening using Baileys.
-- ✅ **Supabase Integration:** Automatic message history logging to PostgreSQL.
-- ✅ **n8n Webhook Bridge:** Seamless integration with n8n workflows.
-- ✅ **Media Support:** Extracts and sends images as Base64 to webhooks.
-- ✅ **Owner Whitelisting:** Secure filtering to respond only to your personal number.
-- ✅ **Anti-Ban Humanizing:** Simulated typing indicators for safer interactions.
-- ✅ **Retry Logic:** Exponential backoff for webhook delivery failures.
-- ✅ **Docker Ready:** Fully containerized with docker-compose.
-- ✅ **Graceful Shutdown:** Proper cleanup of database and socket connections.
+## 🚀 Key Features
 
-## 📋 Prerequisites
+*   **📱 WhatsApp Bot Hub (Baileys):** Real-time WhatsApp listener with Whitelisting (`OWNER_NUMBER`), live status tracking, active QR code generator, and instant session management (with a Disconnect Bot button).
+*   **🛒 Showcase Scraper (Playwright):** Smart crawler designed for dynamic **ReactVirtualized** showcase lists. Automatically scrolls container viewports, collects items incrementally as they render in DOM, and syncs Shopee products cleanly without duplicates.
+*   **📊 Premium Dashboard (SPA UI):** Sleek, modern dark-themed web administration console:
+    *   **Live Status Monitoring:** Pulse-indicator showing connection states ("Connected", "Connecting...", "Disconnected").
+    *   **Product Monitor:** Multi-tab product catalog ("Semua", "Belum Post", "Sudah Post") with Google Drive download link thumbnail parser and custom delete triggers (🗑️).
+    *   **Showcase Manager:** Manage targets and triggers directly from the interface.
+*   **🐘 Supabase PostgreSQL Drizzle ORM:** Connection-pooled persistence with automatic failover (IPv4 transaction poolers).
+*   **🔗 n8n Production Bridge:** Exponential backoff retry logic, webhook heartbeat validations, and zero-image fast-threads posting integrations.
 
-- Node.js 18+
-- PostgreSQL database (Supabase recommended)
-- n8n instance (Docker recommended)
-- Docker & Docker Compose (for containerized setup)
+---
 
-## 🔧 Setup
+## 🏗️ Architecture Flow
 
-### Local Development
-
-1. **Install dependencies:**
-
-```bash
-npm install
+```mermaid
+graph TD
+    A[Shopee Showcase URL] -->|Playwright Scraper| B(Database: products)
+    B -->|n8n Cron Fetch| C{Threads Content Creator}
+    C -->|Post Text + Affiliate Link| D[Meta Threads API]
+    E[WhatsApp Client] -->|Scan QR / Baileys Sock| F(Express REST API)
+    F -->|Dashboard Status & Controls| G[Sleek Web Dashboard UI]
 ```
 
-2. **Create .env file:**
+---
 
-```bash
-cp .env.example .env
-```
+## 🔧 Environment Variables (.env)
 
-3. **Configure environment variables:**
+Traffic Harvester is highly portable and can easily be deployed to **Railway, Render, VPS, or a local Docker container**. Simply duplicate `.env.example` as `.env` and configure:
 
-```env
-DATABASE_URL=postgresql://user:password@host:6543/postgres
-N8N_WEBHOOK_URL=http://localhost:5678/webhook/messages
-OWNER_NUMBER=62812...
-```
+| Key | Description | Example / Default |
+| :--- | :--- | :--- |
+| `PORT` | Web port of the Dashboard and APIs | `3000` |
+| `DATABASE_URL` | PostgreSQL direct or pooler connection URL | `postgresql://...` |
+| `OWNER_NUMBER` | Whitelisted phone number in full international format | `6281228264631@s.whatsapp.net` |
+| `N8N_WEBHOOK_URL` | Endpoint of the n8n WhatsApp messages webhook | `https://n8n.domain.app/webhook/...` |
+| `BOT_NAME` | Identity string shown in logs and console | `Iman Bot` |
+| `JWT_SECRET` | Secret key used to encrypt Dashboard JWT sessions | `traffic-harvester-secure-key` |
+| `LOG_LEVEL` | Level of application logging verbosity | `info` |
 
-4. **Run development mode:**
+---
 
-```bash
-npm run dev
-```
+## 📦 Deployment Guides
 
-### Docker Setup (Recommended)
+### Option A: Railway (Current Setup)
+1. The repository is configured to build using `Dockerfile` automatically.
+2. Railway maps exposed container ports dynamically using the `PORT` environment variable.
+3. Make sure the volume is mounted at `/app/auth_info_baileys` to persist the WhatsApp QR-code session state.
 
-1. **Build and start containers:**
+### Option B: VPS Setup (PM2 & Node)
+1. Clone the repository to your VPS:
+   ```bash
+   git clone <repository_url> && cd iman-wa-bot
+   ```
+2. Copy and configure variables:
+   ```bash
+   cp .env.example .env
+   nano .env
+   ```
+3. Install production dependencies and compile TypeScript:
+   ```bash
+   npm install
+   npm run build
+   ```
+4. Run migrations using drizzle:
+   ```bash
+   npm run db:migrate
+   ```
+5. Start the system via PM2:
+   ```bash
+   pm2 start dist/index.js --name "traffic-harvester"
+   ```
 
-```bash
-docker-compose up -d --build
-```
+### Option C: Docker Compose (Fully Isolated Container)
+1. Build and boot the stack:
+   ```bash
+   docker-compose up -d --build
+   ```
+2. The dashboard is accessible at `http://localhost:3000` (or your VPS IP address).
+3. The Baileys WhatsApp credential storage is safely saved in the host volume `/auth_info_baileys`.
 
-2. **Access n8n:**
+---
 
-- URL: http://localhost:5678
-- Default Credentials: `admin` / `password` (configurable in docker-compose.yml)
+## 🧹 Database Management
 
-3. **Monitor logs & Scan QR:**
+To clear out posted items or sync showcase modifications, you can use the web interface's product catalog.
+*   Click **🗑️** on any item card: This executes a `DELETE /api/products/:id` request, deleting the database item instantly and updating dashboard stats live.
+*   New scraper runs automatically use an **upsert strategy (`onConflictDoUpdate`)**, ensuring that any existing product details are updated without losing their `isPosted` status, preventing duplicate threads posts!
 
-```bash
-docker logs -f iman_wa_bot
-```
+---
 
-## 📝 Environment Variables
+## 📄 License & Maintainer
 
-| Variable              | Description                              | Default                                |
-| --------------------- | ---------------------------------------- | -------------------------------------- |
-| `DATABASE_URL`        | PostgreSQL connection string (IPv4)      | Required                               |
-| `N8N_WEBHOOK_URL`     | n8n webhook endpoint                     | http://n8n:5678/webhook/messages       |
-| `OWNER_NUMBER`        | Your personal WA number (Whitelisting)   | Required                               |
-| `N8N_WEBHOOK_TIMEOUT` | Webhook timeout (ms)                     | 10000                                  |
-| `N8N_WEBHOOK_RETRIES` | Retry attempts if webhook fails          | 3                                      |
-| `BOT_NAME`            | Bot display name                         | Iman Bot                               |
-| `LOG_LEVEL`           | Log level (debug, info, warn, error)     | info                                   |
-
-## 🏗️ Architecture
-
-```
-WhatsApp Message (from Owner)
-    ↓
-┌─────────────────────┐
-│  Baileys Handler    │ (Listen & Media Extraction)
-└─────────────────────┘
-    ↓
-┌─────────────────────────────────────────┐
-│  processMessage() - Parallel Processing │
-├─────────────────────────────────────────┤
-│  ├→ Save to Supabase PostgreSQL          │
-│  └→ Send to n8n Webhook (Base64 Image)   │
-└─────────────────────────────────────────┘
-    ↓
-✅ Confirmation Reply sent to User
-```
-
-## 🔄 Webhook Retry Logic
-
-The bot uses exponential backoff for failed webhook requests:
-
-- Attempt 1: Immediate
-- Attempt 2: 1-second delay
-- Attempt 3: 2-seconds delay
-
-If all attempts fail, the bot logs the error but continues running to process next messages.
-
-## 🧹 Memory & Resource Management
-
-- ✅ Event listeners are cleaned up using `removeAllListeners()`.
-- ✅ Reconnection timeouts are cleared before new attempts.
-- ✅ Graceful shutdown handled via SIGINT/SIGTERM.
-- ✅ Connection pooling used for database efficiency.
-
-## 🐛 Troubleshooting
-
-### Bot keeps reconnecting
-
-- Delete the `auth_info_baileys` folder and scan the QR code again.
-- Ensure the session isn't active on too many other devices.
-
-### Webhook not received in n8n
-
-- Check if the n8n container is accessible from the bot container.
-- Verify the Webhook path in n8n matches `/webhook/messages`.
-- Check n8n logs: `docker logs n8n`.
-
-### Database connection error (ENETUNREACH)
-
-- Ensure you are using the **IPv4 Transaction Pooler** URL from Supabase (Port 6543).
-- Docker Alpine environments may have issues resolving IPv6.
-
-## 📄 License
-
-ISC
-
-## 👨‍💻 Author
-
-**Iman Bot** - WhatsApp Bridge for n8n Automation
+Developed by **Iman Bot Studio** — Engineered for premium, state-of-the-art affiliate automation.
