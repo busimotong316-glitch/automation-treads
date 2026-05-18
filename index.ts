@@ -645,15 +645,19 @@ app.post("/products/:id/update-image", async (req, res) => {
  */
 app.post("/products/:id/mark-posted", async (req, res) => {
     const { id } = req.params;
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+        return res.status(400).json({ error: "Invalid product ID (NaN). No unposted products might be available." });
+    }
     try {
         await db.instance().execute(
             // @ts-ignore
-            `UPDATE products SET is_posted = true, posted_at = NOW() WHERE id = ${parseInt(id)}`
+            `UPDATE products SET is_posted = true, posted_at = NOW() WHERE id = ${parsedId}`
         );
-        logger.info(`✅ Product #${id} marked as posted`);
-        return res.json({ success: true, id });
+        logger.info(`✅ Product #${parsedId} marked as posted`);
+        return res.json({ success: true, id: parsedId });
     } catch (error: any) {
-        logger.error(`❌ Failed to mark product #${id} as posted`, error);
+        logger.error(`❌ Failed to mark product #${parsedId} as posted`, error);
         return res.status(500).json({ error: error.message });
     }
 });
