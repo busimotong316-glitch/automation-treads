@@ -345,10 +345,23 @@ function renderProducts(list) {
       <div class="body">
         <div class="title">${escHtml(p.title)}</div>
         ${p.price ? `<div class="price">${escHtml(p.price)}</div>` : ''}
-        <span class="badge ${p.is_posted ? 'posted' : 'pending'}">${p.is_posted ? '✅ Sudah Diposting' : '⏳ Belum Diposting'}</span>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:4px">
+          <span class="badge ${p.is_posted ? 'posted' : 'pending'}">${p.is_posted ? '✅ Sudah Diposting' : '⏳ Belum Diposting'}</span>
+          <button onclick="deleteProduct(${p.id})" title="Hapus produk" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px;padding:4px 8px;border-radius:6px;transition:background .2s" onmouseover="this.style.background='rgba(255,68,102,0.15)'" onmouseout="this.style.background='none'">🗑️</button>
+        </div>
       </div>
     </div>`;
   }).join('');
+}
+
+async function deleteProduct(id) {
+  if (!confirm('Yakin mau hapus produk ini?')) return;
+  try {
+    await api('/api/products/' + id, { method: 'DELETE' });
+    allProducts = allProducts.filter(p => p.id !== id);
+    renderProducts(allProducts);
+    loadStats();
+  } catch (err) { alert('Gagal hapus: ' + err.message); }
 }
 
 function escHtml(s) {

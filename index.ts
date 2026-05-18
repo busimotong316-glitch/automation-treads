@@ -555,6 +555,26 @@ app.get("/api/products", async (_req, res) => {
 });
 
 /**
+ * DELETE /api/products/:id — Hapus produk dari database
+ */
+app.delete("/api/products/:id", async (req, res) => {
+    const parsedId = parseInt(req.params.id);
+    if (isNaN(parsedId)) {
+        return res.status(400).json({ error: "Invalid product ID" });
+    }
+    try {
+        await db.instance().execute(
+            // @ts-ignore
+            `DELETE FROM products WHERE id = ${parsedId}`
+        );
+        logger.info(`🗑️ Product ${parsedId} deleted via dashboard`);
+        return res.json({ success: true, message: "Produk berhasil dihapus" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * POST /scrape
  * Trigger scraping Shopee showcase dan upsert ke database
  * Dipanggil oleh n8n Cron Workflow 1 (tiap jam 2 pagi)
