@@ -15,7 +15,7 @@
   <div class="auth-card">
     <div class="auth-logo">
       <h1>⚡ Traffic Harvester</h1>
-      <p>Automate Your Affiliate Game</p>
+      <p>Automate Your Affiliate</p>
     </div>
     <div id="authMsg" class="msg"></div>
 
@@ -70,7 +70,7 @@
   <nav class="sidebar" id="sidebar">
     <div class="logo">
       <h2>⚡ Traffic Harvester</h2>
-      <span>Dashboard v1.0</span>
+      <span>Dashboard</span>
     </div>
     <div class="nav-item active" onclick="goTo('home')" data-page="home">
       <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
@@ -115,15 +115,14 @@
         <h3>🚀 Quick Start</h3>
         <p style="color:var(--text2);font-size:14px;line-height:1.8">
           1. <strong>Connect WhatsApp</strong> — Buka halaman WA Connect, input nomor bot, lalu scan QR.<br>
-          2. <strong>Tambah Showcase</strong> — Paste URL showcase Shopee kamu di halaman Showcase.<br>
-          3. <strong>Otomatis!</strong> — n8n akan scrape produk setiap jam 2 pagi dan posting ke Threads.
+          2. <strong>Tambah Showcase</strong> — Paste URL showcase Shopee kamu di halaman Showcase.
         </p>
       </div>
     </div>
 
     <!-- ── WA CONNECT ── -->
     <div id="page-connect" class="page">
-      <div class="main-header"><h1>📱 Connect WhatsApp Bot</h1></div>
+      <div class="main-header"><h1>Connect WhatsApp Bot</h1></div>
       
       <!-- State: Disconnected — show connect form -->
       <div class="card" id="connectCard">
@@ -151,7 +150,7 @@
           <h3 style="color:var(--accent2);margin-bottom:8px">✅ Bot Terkoneksi</h3>
           <p style="color:var(--text2);font-size:14px;margin-bottom:24px">WhatsApp bot sedang aktif dan berjalan.</p>
           <button class="btn" style="background:linear-gradient(135deg,#ef4444,#dc2626);width:auto;padding:12px 32px;font-size:14px" id="disconnectBtn" onclick="disconnectBot()">
-            🔌 Disconnect Bot
+            Disconnect Bot
           </button>
           <p style="color:var(--text2);font-size:12px;margin-top:12px">Disconnect untuk mengganti nomor bot atau scan ulang QR.</p>
         </div>
@@ -160,7 +159,7 @@
 
     <!-- ── SHOWCASE ── -->
     <div id="page-showcase" class="page">
-      <div class="main-header"><h1>🛒 Kelola Showcase</h1></div>
+      <div class="main-header"><h1>Kelola Showcase</h1></div>
       <div class="card">
         <h3>Tambah Showcase Baru</h3>
         <form onsubmit="return addShowcase(event)">
@@ -183,7 +182,7 @@
 
     <!-- ── PRODUCTS ── -->
     <div id="page-products" class="page">
-      <div class="main-header"><h1>📦 Monitor Produk</h1></div>
+      <div class="main-header"><h1>Monitor Produk</h1></div>
       <div class="filters">
         <button class="filter-btn active" onclick="filterProducts('all',this)">Semua</button>
         <button class="filter-btn" onclick="filterProducts('pending',this)">Belum Post</button>
