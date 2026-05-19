@@ -14,7 +14,7 @@ const logger = createLogger("Migrator");
 
 // Pakai pooler URL dari .env
 const DATABASE_URL = process.env.DATABASE_URL 
-    || "postgresql://postgres.rpmsvgdtlyqpseghriug:Shinkoaudio_16@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres";
+    || "postgresql://postgres.rpmsvgdtlyqpseghriug:(password)@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres";
 
 async function runMigration() {
     logger.info("🎬 Starting database migration...");
