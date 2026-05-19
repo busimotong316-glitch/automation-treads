@@ -13,8 +13,11 @@ import { createLogger } from "./logger.js";
 const logger = createLogger("Migrator");
 
 // Pakai pooler URL dari .env
-const DATABASE_URL = process.env.DATABASE_URL 
-    || "postgresql://postgres.rpmsvgdtlyqpseghriug:(password)@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres";
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+    console.error("❌ DATABASE_URL is required! Set it in .env file.");
+    process.exit(1);
+}
 
 async function runMigration() {
     logger.info("🎬 Starting database migration...");

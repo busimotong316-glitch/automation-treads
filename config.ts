@@ -34,10 +34,7 @@ function validateEnv(key: string, defaultValue?: string): string {
 
 export const config: Config = {
     database: {
-        url: validateEnv(
-            "DATABASE_URL",
-            "postgresql://postgres.rpmsvgdtlyqpseghriug:Shinkoaudio_16@db.rpmsvgdtlyqpseghriug.supabase.co:5432/postgres",
-        ),
+        url: validateEnv("DATABASE_URL"),
         maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS || "10"),
     },
     n8n: {
