@@ -55,9 +55,7 @@ COPY --from=builder /app/public ./public
 # Create volume untuk auth credentials (persistent)
 RUN mkdir -p auth_info_baileys && chown -R nodejs:nodejs auth_info_baileys
 
-# Copy auth credentials from builder if they exist (so local session pushed to git is used)
-COPY --from=builder --chown=nodejs:nodejs /app/auth_info_baileys ./auth_info_baileys/
-
+# (COPY command dihapus karena auth_info_baileys sudah di-mount via docker-compose volume)
 # Change to nodejs user (Disabled sementara karena masalah permission di Windows volume)
 # USER nodejs
 
