@@ -542,12 +542,10 @@ app.post("/report", async (req, res) => {
     while (!botState.isRunning || !botState.sock) {
       if (attempts >= 15) {
         logger.error("❌ Cannot send report: Bot connection is offline");
-        return res
-          .status(503)
-          .json({
-            error:
-              "WhatsApp bot is currently offline. Please wait for reconnection.",
-          });
+        return res.status(503).json({
+          error:
+            "WhatsApp bot is currently offline. Please wait for reconnection.",
+        });
       }
       logger.warn(
         `⏳ WhatsApp bot connection is not ready. Waiting to send report... (Attempt ${attempts + 1}/15)`,
@@ -731,12 +729,10 @@ app.post("/products/:id/mark-posted", async (req, res) => {
   const { id } = req.params;
   const parsedId = parseInt(id);
   if (isNaN(parsedId)) {
-    return res
-      .status(400)
-      .json({
-        error:
-          "Invalid product ID (NaN). No unposted products might be available.",
-      });
+    return res.status(400).json({
+      error:
+        "Invalid product ID (NaN). No unposted products might be available.",
+    });
   }
   try {
     await db.instance().execute(
@@ -805,7 +801,7 @@ async function main(): Promise<void> {
       logger.info("📡 Report API listening on port 3000");
     });
 
-    // await startBot(); // SEMENTARA DIMATIKAN KARENA WA DIBANNED
+    await startBot(); // DIHAPUS KOMENTARNYA
 
     // Setup graceful shutdown handlers
     process.on("SIGINT", () => shutdown("SIGINT"));
