@@ -801,7 +801,8 @@ async function main(): Promise<void> {
       logger.info("📡 Report API listening on port 3000");
     });
 
-    await startBot(); // DIHAPUS KOMENTARNYA
+    // MATIKAN SEMENTARA SESUAI INSTRUKSI DEMI MENYELAMATKAN SERVER DARI CRASH LOOP
+    // await startBot();
 
     // Setup graceful shutdown handlers
     process.on("SIGINT", () => shutdown("SIGINT"));
