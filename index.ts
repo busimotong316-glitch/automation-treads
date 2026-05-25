@@ -801,8 +801,12 @@ async function main(): Promise<void> {
       logger.info("📡 Report API listening on port 3000");
     });
 
-    // MATIKAN SEMENTARA SESUAI INSTRUKSI DEMI MENYELAMATKAN SERVER DARI CRASH LOOP
-    // await startBot();
+    // Mencegah error TS6133 (unused variable) saat build Docker:
+    // Bot WA hanya akan jalan jika environment variable ENABLE_WA_BOT diset "true"
+    // Di Railway saat ini tidak diset, jadi bot WA mati dan server aman dari crash loop.
+    if (process.env.ENABLE_WA_BOT === "true") {
+      await startBot();
+    }
 
     // Setup graceful shutdown handlers
     process.on("SIGINT", () => shutdown("SIGINT"));
