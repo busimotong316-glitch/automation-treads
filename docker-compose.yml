@@ -6,13 +6,13 @@ services:
     image: n8nio/n8n:latest
     container_name: n8n
     environment:
-       - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
-       - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
-       - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-password}
-       - N8N_HOST=0.0.0.0
-       - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
-       - N8N_PROTOCOL=http
-       - N8N_PORT=5678
+      - N8N_BASIC_AUTH_ACTIVE=${N8N_BASIC_AUTH_ACTIVE:-true}
+      - N8N_BASIC_AUTH_USER=${N8N_BASIC_AUTH_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_BASIC_AUTH_PASSWORD:-password}
+      - N8N_HOST=0.0.0.0
+      - WEBHOOK_URL=${N8N_PUBLIC_URL:-http://localhost:5678/}
+      - N8N_PROTOCOL=http
+      - N8N_PORT=5678
     ports:
       - "5678:5678"
     volumes:
@@ -38,32 +38,32 @@ services:
   #     - iman_network
   #   restart: unless-stopped
 
-  # Iman WhatsApp Bot
-  iman_bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: iman_wa_bot
-    # Load semua env dari file .env (jangan hardcode credentials di sini!)
-    env_file:
-      - .env
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./auth_info_baileys:/app/auth_info_baileys
-    depends_on:
-      - n8n
-    networks:
-      - iman_network
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: "1"
-          memory: 512M
-        reservations:
-          cpus: "0.5"
-          memory: 256M
+  # Iman WhatsApp Bot (Dinonaktifkan sementara agar tidak build/crash)
+  # iman_bot:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: iman_wa_bot
+  #   # Load semua env dari file .env (jangan hardcode credentials di sini!)
+  #   env_file:
+  #     - .env
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./auth_info_baileys:/app/auth_info_baileys
+  #   depends_on:
+  #     - n8n
+  #   networks:
+  #     - iman_network
+  #   restart: unless-stopped
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: "1"
+  #         memory: 512M
+  #       reservations:
+  #         cpus: "0.5"
+  #         memory: 256M
 
 volumes:
   n8n_data:
